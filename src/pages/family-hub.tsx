@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import {
   Bell,
@@ -102,6 +103,9 @@ type FamilyNode = {
   imageUrl?: string;
   birthYear?: number;
   note?: string;
+  fatherId?: string;
+  motherId?: string;
+  parentId?: string;
   children?: FamilyNode[];
 };
 
@@ -716,100 +720,138 @@ function DiagramTreeNode({
 }) {
   const isSelected = selectedId === node.id;
   const hasChildren = (node.children?.length ?? 0) > 0;
-  const isExpanded = expanded[node.id] ?? level < 1;
+  const isExpanded = expanded[node.id] ?? level < 2; // Expand more levels by default
   const children = node.children ?? [];
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative">
+      <div className="relative group/node">
+        {/* Connection line above - only for levels > 0 */}
+        {level > 0 && (
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-linear-to-b from-border to-primary/40" />
+        )}
+
         <div
-          className={
-            "group rounded-xl border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-accent/40 min-w-[120px] " +
-            (isSelected ? "border-primary bg-accent/40" : "border-border")
-          }
+          className={cn(
+            "relative w-48 overflow-hidden rounded-2xl border transition-all duration-300",
+            "bg-card/50 backdrop-blur-md hover:bg-card/80 hover:shadow-xl hover:-translate-y-1",
+            isSelected
+              ? "ring-2 ring-primary ring-offset-2 border-primary bg-primary/5 shadow-primary/20"
+              : "border-border shadow-sm"
+          )}
         >
+          {/* Top accent bar */}
+          <div className={cn(
+            "h-1.5 w-full",
+            level === 0 ? "bg-primary" :
+              level === 1 ? "bg-blue-400" :
+                level === 2 ? "bg-emerald-400" : "bg-muted-foreground/30"
+          )} />
+
           <button
             type="button"
             onClick={() => onSelect(node.id)}
-            className="w-full"
+            className="w-full p-4 text-left"
           >
-            <div className="flex flex-col items-center gap-2">
-              <div className="bg-muted size-12 shrink-0 overflow-hidden rounded-full border">
-                <img
-                  src={node.imageUrl || "/placeholder.svg"}
-                  alt={node.name}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  onError={(e) => {
-                    e.currentTarget.src = "/placeholder.svg";
-                  }}
-                />
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className={cn(
+                  "size-14 shrink-0 overflow-hidden rounded-full border-2 p-0.5 transition-transform duration-300 group-hover/node:scale-110",
+                  isSelected ? "border-primary" : "border-background"
+                )}>
+                  <img
+                    src={node.imageUrl || "/placeholder.svg"}
+                    alt={node.name}
+                    className="h-full w-full rounded-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg";
+                    }}
+                  />
+                </div>
+                {hasChildren && (
+                  <div className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm">
+                    {children.length}
+                  </div>
+                )}
               </div>
 
-              <div className="min-w-0 text-center">
-                <div className="truncate text-sm font-semibold">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-bold tracking-tight">
                   {node.name}
                 </div>
-                <div className="text-muted-foreground truncate text-xs">
-                  {node.birthYear ? `Born ${node.birthYear}` : ""}
-                  {node.note ? (node.birthYear ? " • " : "") + node.note : ""}
+                <div className="text-muted-foreground mt-0.5 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider">
+                  <Calendar className="size-2.5" />
+                  {node.birthYear ? `Born ${node.birthYear}` : "Unknown"}
                 </div>
               </div>
             </div>
+
+            {node.note && (
+              <div className="mt-3 border-t pt-2">
+                <p className="line-clamp-1 text-[10px] text-muted-foreground italic">
+                  "{node.note}"
+                </p>
+              </div>
+            )}
           </button>
 
-          {hasChildren ? (
-            <div className="flex justify-center mt-2">
+          {hasChildren && (
+            <div className="absolute right-2 top-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-sm"
+                className="size-6 rounded-full bg-background/50 backdrop-blur-sm hover:bg-background"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   onToggle(node.id);
                 }}
-                aria-label={isExpanded ? "Collapse" : "Expand"}
               >
-                <span className="text-muted-foreground">
-                  {isExpanded ? "▾" : "▸"}
-                </span>
+                <ChevronRight className={cn(
+                  "size-3 transition-transform duration-300",
+                  isExpanded ? "rotate-90" : ""
+                )} />
               </Button>
             </div>
-          ) : null}
+          )}
         </div>
 
-        {hasChildren ? (
-          <div className="text-muted-foreground absolute -bottom-6 left-1/2 hidden -translate-x-1/2 text-[11px] group-hover:block">
-            {children.length} child
-          </div>
-        ) : null}
+        {/* Child connection lines start point */}
+        {hasChildren && isExpanded && (
+          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-linear-to-b from-primary/40 to-border" />
+        )}
       </div>
 
       {hasChildren && isExpanded ? (
-        <div className="flex w-full flex-col items-center">
-          <div className="bg-border mt-4 h-6 w-px" />
+        <div className="relative mt-8 flex flex-col items-center w-full">
+          {/* Horizontal connecting line */}
+          {children.length > 1 && (
+            <div className="absolute top-0 h-0.5 bg-border"
+              style={{
+                width: "calc(100% - 192px)", // Adjust based on node width
+                maxWidth: children.length > 1 ? `calc(${children.length} * 200px / 2)` : "0"
+              }}
+            />
+          )}
 
-          <div className="relative w-full">
-            <div className="bg-border absolute left-0 right-0 top-0 mx-auto h-px w-[92%]" />
-            <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-8">
-              {children.map((child) => (
-                <div
-                  key={child.id}
-                  className="relative flex flex-col items-center"
-                >
-                  <div className="bg-border absolute -top-6 left-1/2 h-6 w-px -translate-x-1/2" />
-                  <DiagramTreeNode
-                    node={child}
-                    expanded={expanded}
-                    selectedId={selectedId}
-                    onToggle={onToggle}
-                    onSelect={onSelect}
-                    level={level + 1}
-                  />
-                </div>
-              ))}
-            </div>
+          <div className="mt-0 flex flex-wrap justify-center gap-x-8 gap-y-12 pb-4 pt-0">
+            {children.map((child) => (
+              <div
+                key={child.id}
+                className="relative"
+              >
+                <DiagramTreeNode
+                  node={child}
+                  expanded={expanded}
+                  selectedId={selectedId}
+                  onToggle={onToggle}
+                  onSelect={onSelect}
+                  level={level + 1}
+                />
+              </div>
+            ))}
           </div>
         </div>
       ) : null}
@@ -920,7 +962,7 @@ export default function FamilyHubPage() {
   const deleteFamilyMember = useMutation(api.families.deleteFamilyMember);
   const createSocialLink = useMutation(api.socialLinks.createSocialLink);
   const deleteSocialLink = useMutation(api.socialLinks.deleteSocialLink);
-  
+
   const createFamily = useMutation(api.families.createFamily);
   const updateFamily = useMutation(api.families.updateFamily);
   const deleteFamily = useMutation(api.families.deleteFamily);
@@ -967,6 +1009,8 @@ export default function FamilyHubPage() {
     imageUrl: string;
     familyId: string;
     parentId: string;
+    fatherId: string;
+    motherId: string;
   }>({
     name: "",
     birthYear: "",
@@ -974,6 +1018,8 @@ export default function FamilyHubPage() {
     imageUrl: "",
     familyId: "",
     parentId: "",
+    fatherId: "",
+    motherId: "",
   });
 
   const [newSocial, setNewSocial] = React.useState({
@@ -1014,17 +1060,19 @@ export default function FamilyHubPage() {
     if (!familyNodes.length) return null;
 
     // Find root node (no parentId)
-    const rootNode = familyNodes.find((node) => !node.parentId);
+    const rootNode = familyNodes.find((node) => !node.parentId && !node.fatherId && !node.motherId) || familyNodes[0];
     if (!rootNode) return null;
 
     // Build tree recursively
-    const buildTree = (nodeId: string): FamilyNode => {
+    const buildTree = (nodeId: string, visited: Set<string> = new Set()): FamilyNode => {
       const node = familyNodes.find((n) => n._id === nodeId);
       if (!node) throw new Error(`Node ${nodeId} not found`);
 
+      visited.add(nodeId);
+
       const children = familyNodes
-        .filter((n) => n.parentId === nodeId)
-        .map((child) => buildTree(child._id));
+        .filter((n) => (n.parentId === nodeId || n.fatherId === nodeId || n.motherId === nodeId) && !visited.has(n._id))
+        .map((child) => buildTree(child._id, new Set(visited)));
 
       return {
         id: node._id,
@@ -1032,6 +1080,9 @@ export default function FamilyHubPage() {
         imageUrl: node.imageUrl,
         birthYear: node.birthYear,
         note: node.note,
+        fatherId: node.fatherId,
+        motherId: node.motherId,
+        parentId: node.parentId,
         children: children.length > 0 ? children : undefined,
       };
     };
@@ -1161,7 +1212,7 @@ export default function FamilyHubPage() {
   const addPersonDisabled = newPerson.name.trim().length === 0 || !newPerson.familyId;
 
   const addSocialDisabled = newSocial.name.trim().length === 0 || newSocial.url.trim().length === 0;
-  
+
   const addFamilyDisabled = newFamily.name.trim().length === 0;
 
   const addChildToTree = React.useCallback(
@@ -1250,7 +1301,7 @@ export default function FamilyHubPage() {
       const key = `${type}:${id}`;
       const text = (commentDrafts[key] ?? "").trim();
       const author = commentAuthor.trim();
-      
+
       if (!text || !author) return;
 
       await addComment({
@@ -1332,232 +1383,228 @@ export default function FamilyHubPage() {
             }
           }}
         >
-          <DialogContent className="max-w-5xl w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-hidden sm:w-full">
-            {activeGalleryItem ? (
-              <div className="grid gap-4 md:grid-cols-[1.6fr_.9fr]">
-                <div className="grid gap-3">
-                  <div className="relative overflow-hidden rounded-lg border bg-zinc-900">
-                    <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
-                      <Badge variant="secondary" className="bg-white/85">
-                        {galleryIndex + 1} / {galleryItems.length}
-                      </Badge>
-                      <MediaPill media={activeGalleryItem.media} />
-                    </div>
+          <DialogContent className="max-w-5xl w-[calc(100vw-1rem)] md:w-[calc(100vw-4rem)] max-h-[95dvh] overflow-hidden rounded-3xl border-none p-0 bg-transparent shadow-none [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:bg-black/20 [&>button]:hover:bg-black/40 [&>button]:rounded-full">
+            <div className="bg-card/95 backdrop-blur-2xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col h-full max-h-[95dvh]">
+              {activeGalleryItem ? (
+                <div className="grid gap-4 md:grid-cols-[1.6fr_.9fr] overflow-hidden flex-1">
+                  <div className="grid gap-3 p-4 overflow-y-auto custom-scrollbar">
+                    <div className="relative overflow-hidden rounded-2xl border bg-zinc-900 aspect-video flex items-center justify-center">
+                      <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
+                        <Badge variant="secondary" className="bg-white/85">
+                          {galleryIndex + 1} / {galleryItems.length}
+                        </Badge>
+                        <MediaPill media={activeGalleryItem.media} />
+                      </div>
 
-                    <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="icon"
-                        onClick={galleryPrev}
-                        disabled={galleryItems.length < 2}
-                        aria-label="Previous"
-                      >
-                        <ChevronLeft />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="icon"
-                        onClick={galleryNext}
-                        disabled={galleryItems.length < 2}
-                        aria-label="Next"
-                      >
-                        <ChevronRight />
-                      </Button>
-                    </div>
-
-                    {activeGalleryItem.media.type === "video" ? (
-                      <video
-                        className="aspect-video w-full object-contain"
-                        src={activeGalleryItem.media.url}
-                        poster={
-                          "posterUrl" in activeGalleryItem.media
-                            ? activeGalleryItem.media.posterUrl
-                            : undefined
-                        }
-                        controls
-                        autoPlay
-                        preload="metadata"
-                        onError={(e) => {
-                          console.log("Gallery video failed to load:", activeGalleryItem.media.url);
-                          // Don't hide the video, just show controls
-                          e.currentTarget.controls = true;
-                        }}
-                      />
-                    ) : (
-                      <img
-                        src={activeGalleryItem.media.url}
-                        alt={
-                          "alt" in activeGalleryItem.media
-                            ? (activeGalleryItem.media.alt ?? "")
-                            : ""
-                        }
-                        className="aspect-video w-full object-contain"
-                        loading="lazy"
-                      />
-                    )}
-                  </div>
-
-                  <ScrollArea className="h-20 rounded-lg border sm:h-24">
-                    <div className="flex gap-2 p-2">
-                      {galleryItems.map((item, idx) => (
-                        <button
-                          key={item.id}
+                      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+                        <Button
                           type="button"
-                          onClick={() => setGalleryIndex(idx)}
-                          className={
-                            "relative aspect-video w-32 shrink-0 overflow-hidden rounded-md border transition-colors hover:bg-accent/30 " +
-                            (idx === galleryIndex
-                              ? "border-primary ring-ring ring-1"
-                              : "border-border")
-                          }
+                          variant="secondary"
+                          size="icon"
+                          className="rounded-full bg-black/20 hover:bg-black/40 border-none text-white backdrop-blur-md"
+                          onClick={galleryPrev}
+                          disabled={galleryItems.length < 2}
+                          aria-label="Previous"
                         >
-                          {item.media.type === "video" ? (
-                            <div className="flex h-full w-full items-center justify-center bg-muted">
-                              <Clapperboard className="text-muted-foreground size-6" />
-                            </div>
-                          ) : (
-                            <img
-                              src={item.media.url}
-                              alt={
-                                "alt" in item.media
-                                  ? (item.media.alt ?? "")
-                                  : ""
-                              }
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                            />
-                          )}
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 line-clamp-1 bg-black/50 px-2 py-1 text-left text-[11px] text-white">
-                            {item.title}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
+                          <ChevronLeft />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="rounded-full bg-black/20 hover:bg-black/40 border-none text-white backdrop-blur-md"
+                          onClick={galleryNext}
+                          disabled={galleryItems.length < 2}
+                          aria-label="Next"
+                        >
+                          <ChevronRight />
+                        </Button>
+                      </div>
 
-                <div className="grid content-start gap-3">
-                  <div className="rounded-lg border p-4">
-                    <div className="text-muted-foreground text-xs">
-                      {activeGalleryItem.type === "event" ? "Event" : "News"}
-                    </div>
-                    <div className="mt-1 text-lg font-semibold">
-                      {activeGalleryItem.title}
-                    </div>
-                    <div className="text-muted-foreground mt-1 text-sm">
-                      {format(
-                        parseISO(activeGalleryItem.dateISO),
-                        "MMM d, yyyy"
+                      {activeGalleryItem.media.type === "video" ? (
+                        <video
+                          className="w-full h-full object-contain"
+                          src={activeGalleryItem.media.url}
+                          poster={
+                            "posterUrl" in activeGalleryItem.media
+                              ? activeGalleryItem.media.posterUrl
+                              : undefined
+                          }
+                          controls
+                          autoPlay
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img
+                          src={activeGalleryItem.media.url}
+                          alt={
+                            "alt" in activeGalleryItem.media
+                              ? (activeGalleryItem.media.alt ?? "")
+                              : ""
+                          }
+                          className="w-full h-full object-contain"
+                          loading="lazy"
+                        />
                       )}
                     </div>
-                    {activeGalleryItem.tags &&
-                    activeGalleryItem.tags.length > 0 ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {activeGalleryItem.tags.map((t) => (
-                          <Badge key={t} variant="outline">
-                            {t}
-                          </Badge>
+
+                    <ScrollArea className="h-20 rounded-lg border sm:h-24">
+                      <div className="flex gap-2 p-2">
+                        {galleryItems.map((item, idx) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setGalleryIndex(idx)}
+                            className={cn(
+                              "relative aspect-video w-32 shrink-0 overflow-hidden rounded-md border transition-all hover:scale-105 ",
+                              idx === galleryIndex
+                                ? "border-primary ring-2 ring-primary ring-offset-1"
+                                : "border-border opacity-70 hover:opacity-100"
+                            )}
+                          >
+                            {item.media.type === "video" ? (
+                              <div className="flex h-full w-full items-center justify-center bg-muted">
+                                <Clapperboard className="text-muted-foreground size-6" />
+                              </div>
+                            ) : (
+                              <img
+                                src={item.media.url}
+                                alt={
+                                  "alt" in item.media
+                                    ? (item.media.alt ?? "")
+                                    : ""
+                                }
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                            )}
+                          </button>
                         ))}
                       </div>
-                    ) : null}
+                    </ScrollArea>
                   </div>
 
-                  {activeGalleryItem.meta ? (
+                  <div className="p-6 bg-muted/50 border-l overflow-y-auto custom-scrollbar flex flex-col h-full gap-4">
+
                     <div className="rounded-lg border p-4">
                       <div className="text-muted-foreground text-xs">
-                        Details
+                        {activeGalleryItem.type === "event" ? "Event" : "News"}
                       </div>
-                      <div className="mt-1 text-sm">
-                        {activeGalleryItem.meta}
+                      <div className="mt-1 text-lg font-semibold">
+                        {activeGalleryItem.title}
                       </div>
+                      <div className="text-muted-foreground mt-1 text-sm">
+                        {format(
+                          parseISO(activeGalleryItem.dateISO),
+                          "MMM d, yyyy"
+                        )}
+                      </div>
+                      {activeGalleryItem.tags &&
+                        activeGalleryItem.tags.length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {activeGalleryItem.tags.map((t) => (
+                            <Badge key={t} variant="outline">
+                              {t}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
 
-                  {activeGalleryItem.description ? (
-                    <div className="rounded-lg border p-4">
-                      <div className="text-muted-foreground text-xs">
-                        Description
-                      </div>
-                      <div className="mt-1 text-sm">
-                        {activeGalleryItem.description}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {activeGalleryPost ? (
-                    <div className="rounded-lg border p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
+                    {activeGalleryItem.meta ? (
+                      <div className="rounded-lg border p-4">
                         <div className="text-muted-foreground text-xs">
-                          Reactions
+                          Details
                         </div>
-                        <div className="text-muted-foreground inline-flex items-center gap-1 text-xs">
-                          <MessageCircle className="size-3.5" />0
+                        <div className="mt-1 text-sm">
+                          {activeGalleryItem.meta}
                         </div>
                       </div>
+                    ) : null}
 
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        <ReactionButton
-                          icon={<ThumbsUp className="size-4" />}
-                          label="Like"
-                          count={activeGalleryPost.reactions.like}
-                          onClick={() =>
-                            applyReaction(
-                              activeGalleryItem.type,
-                              activeGalleryItem.id as Id<"events"> | Id<"news">,
-                              "like"
-                            )
-                          }
-                        />
-                        <ReactionButton
-                          icon={<Smile className="size-4" />}
-                          label="Smile"
-                          count={activeGalleryPost.reactions.smile}
-                          onClick={() =>
-                            applyReaction(
-                              activeGalleryItem.type,
-                              activeGalleryItem.id as Id<"events"> | Id<"news">,
-                              "smile"
-                            )
-                          }
-                        />
-                        <ReactionButton
-                          icon={<Heart className="size-4" />}
-                          label="Heart"
-                          count={activeGalleryPost.reactions.heart}
-                          onClick={() =>
-                            applyReaction(
-                              activeGalleryItem.type,
-                              activeGalleryItem.id as Id<"events"> | Id<"news">,
-                              "heart"
-                            )
-                          }
-                        />
-                        <ReactionButton
-                          icon={<PartyPopper className="size-4" />}
-                          label="Yay"
-                          count={activeGalleryPost.reactions.celebrate}
-                          onClick={() =>
-                            applyReaction(
-                              activeGalleryItem.type,
-                              activeGalleryItem.id as Id<"events"> | Id<"news">,
-                              "celebrate"
-                            )
-                          }
-                        />
-                      </div>
-
-                      <Separator className="my-3" />
-
-                      <div className="grid gap-2">
+                    {activeGalleryItem.description ? (
+                      <div className="rounded-lg border p-4">
                         <div className="text-muted-foreground text-xs">
-                          Comments
+                          Description
                         </div>
-                        {activeGalleryComments.length > 0 ? (
-                          <div className="grid gap-2">
-                            {activeGalleryComments.slice(-3).map((c) => (
-                              <div key={c._id} className="rounded-md border p-2">
+                        <div className="mt-1 text-sm">
+                          {activeGalleryItem.description}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {activeGalleryPost ? (
+                      <div className="rounded-lg border p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-muted-foreground text-xs">
+                            Reactions
+                          </div>
+                          <div className="text-muted-foreground inline-flex items-center gap-1 text-xs">
+                            <MessageCircle className="size-3.5" />0
+                          </div>
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <ReactionButton
+                            icon={<ThumbsUp className="size-4" />}
+                            label="Like"
+                            count={activeGalleryPost.reactions.like}
+                            onClick={() =>
+                              applyReaction(
+                                activeGalleryItem.type,
+                                activeGalleryItem.id as Id<"events"> | Id<"news">,
+                                "like"
+                              )
+                            }
+                          />
+                          <ReactionButton
+                            icon={<Smile className="size-4" />}
+                            label="Smile"
+                            count={activeGalleryPost.reactions.smile}
+                            onClick={() =>
+                              applyReaction(
+                                activeGalleryItem.type,
+                                activeGalleryItem.id as Id<"events"> | Id<"news">,
+                                "smile"
+                              )
+                            }
+                          />
+                          <ReactionButton
+                            icon={<Heart className="size-4" />}
+                            label="Heart"
+                            count={activeGalleryPost.reactions.heart}
+                            onClick={() =>
+                              applyReaction(
+                                activeGalleryItem.type,
+                                activeGalleryItem.id as Id<"events"> | Id<"news">,
+                                "heart"
+                              )
+                            }
+                          />
+                          <ReactionButton
+                            icon={<PartyPopper className="size-4" />}
+                            label="Yay"
+                            count={activeGalleryPost.reactions.celebrate}
+                            onClick={() =>
+                              applyReaction(
+                                activeGalleryItem.type,
+                                activeGalleryItem.id as Id<"events"> | Id<"news">,
+                                "celebrate"
+                              )
+                            }
+                          />
+                        </div>
+
+                        <Separator className="my-3" />
+
+                        <div className="grid gap-2">
+                          <div className="text-muted-foreground text-xs">
+                            Comments
+                          </div>
+                          {activeGalleryComments.length > 0 ? (
+                            <div className="grid gap-2">
+                              {activeGalleryComments.slice(-3).map((c) => (
+                                <div key={c._id} className="rounded-md border p-2">
                                   <div className="flex items-center justify-between gap-2">
                                     <div className="text-xs font-medium">
                                       {c.author}
@@ -1582,144 +1629,145 @@ export default function FamilyHubPage() {
                                       )}
                                     </div>
                                   </div>
-                                <div className="text-muted-foreground mt-1 text-sm">
-                                  {c.text}
+                                  <div className="text-muted-foreground mt-1 text-sm">
+                                    {c.text}
+                                  </div>
+                                  <div className="flex gap-1 mt-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={() =>
+                                        applyCommentReaction(
+                                          c._id as Id<"comments">,
+                                          "like"
+                                        )
+                                      }
+                                    >
+                                      <ThumbsUp className="size-3 mr-1" />
+                                      Like{" "}
+                                      {c.reactions?.like > 0 &&
+                                        `(${c.reactions.like})`}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={() =>
+                                        applyCommentReaction(
+                                          c._id as Id<"comments">,
+                                          "smile"
+                                        )
+                                      }
+                                    >
+                                      <Smile className="size-3 mr-1" />
+                                      Smile{" "}
+                                      {c.reactions?.smile > 0 &&
+                                        `(${c.reactions.smile})`}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={() =>
+                                        applyCommentReaction(
+                                          c._id as Id<"comments">,
+                                          "heart"
+                                        )
+                                      }
+                                    >
+                                      <Heart className="size-3 mr-1" />
+                                      Heart{" "}
+                                      {c.reactions?.heart > 0 &&
+                                        `(${c.reactions.heart})`}
+                                    </Button>
+                                  </div>
                                 </div>
-                                <div className="flex gap-1 mt-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    onClick={() =>
-                                      applyCommentReaction(
-                                        c._id as Id<"comments">,
-                                        "like"
-                                      )
-                                    }
-                                  >
-                                    <ThumbsUp className="size-3 mr-1" />
-                                    Like{" "}
-                                    {c.reactions?.like > 0 &&
-                                      `(${c.reactions.like})`}
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    onClick={() =>
-                                      applyCommentReaction(
-                                        c._id as Id<"comments">,
-                                        "smile"
-                                      )
-                                    }
-                                  >
-                                    <Smile className="size-3 mr-1" />
-                                    Smile{" "}
-                                    {c.reactions?.smile > 0 &&
-                                      `(${c.reactions.smile})`}
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    onClick={() =>
-                                      applyCommentReaction(
-                                        c._id as Id<"comments">,
-                                        "heart"
-                                      )
-                                    }
-                                  >
-                                    <Heart className="size-3 mr-1" />
-                                    Heart{" "}
-                                    {c.reactions?.heart > 0 &&
-                                      `(${c.reactions.heart})`}
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground text-sm">
-                            No comments yet.
-                          </div>
-                        )}
-
-                        <div className="mt-1">
-                          {activeCommentInput === `${activeGalleryItem.type}:${activeGalleryItem.id}` ? (
-                            <div className="grid gap-2 p-3 bg-muted/20 rounded-lg border">
-                              <div className="text-xs font-medium text-muted-foreground mb-1">New Comment</div>
-                              <Input
-                                value={commentAuthor}
-                                onChange={(e) => setCommentAuthor(e.target.value)}
-                                placeholder="Your full name"
-                                className="bg-background"
-                              />
-                              <Input
-                                value={
-                                  commentDrafts[
-                                    `${activeGalleryItem.type}:${activeGalleryItem.id}`
-                                  ] ?? ""
-                                }
-                                onChange={(e) =>
-                                  setCommentDrafts((prev) => ({
-                                    ...prev,
-                                    [`${activeGalleryItem.type}:${activeGalleryItem.id}`]:
-                                      e.target.value,
-                                  }))
-                                }
-                                placeholder="Write a comment…"
-                                className="bg-background"
-                              />
-                              <div className="flex gap-2 justify-end">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setActiveCommentInput(null)}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  disabled={!commentAuthor.trim() || !(commentDrafts[`${activeGalleryItem.type}:${activeGalleryItem.id}`] ?? "").trim()}
-                                  onClick={() =>
-                                    handleAddComment(
-                                      activeGalleryItem.type,
-                                      activeGalleryItem.id as
-                                        | Id<"events">
-                                        | Id<"news">
-                                    )
-                                  }
-                                >
-                                  <MessageCircle className="mr-1.5 size-4" />
-                                  Post
-                                </Button>
-                              </div>
+                              ))}
                             </div>
                           ) : (
-                            <Button
-                              className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-                              onClick={() => {
-                                setActiveCommentInput(`${activeGalleryItem.type}:${activeGalleryItem.id}`);
-                                // Use previous author name if available (simple enhancement)
-                              }}
-                            >
-                              <MessageCircle className="mr-2 size-4" />
-                              Add a comment
-                            </Button>
+                            <div className="text-muted-foreground text-sm">
+                              No comments yet.
+                            </div>
                           )}
+
+                          <div className="mt-1">
+                            {activeCommentInput === `${activeGalleryItem.type}:${activeGalleryItem.id}` ? (
+                              <div className="grid gap-2 p-3 bg-muted/20 rounded-lg border">
+                                <div className="text-xs font-medium text-muted-foreground mb-1">New Comment</div>
+                                <Input
+                                  value={commentAuthor}
+                                  onChange={(e) => setCommentAuthor(e.target.value)}
+                                  placeholder="Your full name"
+                                  className="bg-background"
+                                />
+                                <Input
+                                  value={
+                                    commentDrafts[
+                                    `${activeGalleryItem.type}:${activeGalleryItem.id}`
+                                    ] ?? ""
+                                  }
+                                  onChange={(e) =>
+                                    setCommentDrafts((prev) => ({
+                                      ...prev,
+                                      [`${activeGalleryItem.type}:${activeGalleryItem.id}`]:
+                                        e.target.value,
+                                    }))
+                                  }
+                                  placeholder="Write a comment…"
+                                  className="bg-background"
+                                />
+                                <div className="flex gap-2 justify-end">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setActiveCommentInput(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={!commentAuthor.trim() || !(commentDrafts[`${activeGalleryItem.type}:${activeGalleryItem.id}`] ?? "").trim()}
+                                    onClick={() =>
+                                      handleAddComment(
+                                        activeGalleryItem.type,
+                                        activeGalleryItem.id as
+                                        | Id<"events">
+                                        | Id<"news">
+                                      )
+                                    }
+                                  >
+                                    <MessageCircle className="mr-1.5 size-4" />
+                                    Post
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button
+                                className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                                onClick={() => {
+                                  setActiveCommentInput(`${activeGalleryItem.type}:${activeGalleryItem.id}`);
+                                  // Use previous author name if available (simple enhancement)
+                                }}
+                              >
+                                <MessageCircle className="mr-2 size-4" />
+                                Add a comment
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : null}
+                    ) : null}
 
-                  <div className="text-muted-foreground text-xs">
-                    Tip: Use left/right arrow keys to move between items.
+                    <div className="text-muted-foreground text-xs">
+                      Tip: Use left/right arrow keys to move between items.
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -1727,182 +1775,189 @@ export default function FamilyHubPage() {
           open={editingEvent !== null}
           onOpenChange={(open) => !open && setEditingEvent(null)}
         >
-          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Event</DialogTitle>
-              <DialogDescription>Update event information.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-3">
-              <div>
-                <div className="text-sm font-medium">Title</div>
-                <Input
-                  value={newEvent.title}
-                  onChange={(e) =>
-                    setNewEvent((prev) => ({
-                      ...prev,
-                      title: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g., Cousins brunch"
-                />
+          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto rounded-2xl border-none p-0 bg-transparent shadow-none [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:bg-black/20 [&>button]:hover:bg-black/40 [&>button]:rounded-full [&>button]:transition-all">
+            <div className="bg-card/95 backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col h-full max-h-[90dvh]">
+              <div className="p-6 pb-4 bg-linear-to-br from-primary/10 via-transparent to-transparent">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/60">Edit Event</DialogTitle>
+                  <DialogDescription className="text-muted-foreground/80">Update event information.</DialogDescription>
+                </DialogHeader>
               </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="px-6 pb-6 overflow-y-auto flex-1 custom-scrollbar">
+                <div className="grid gap-4 mt-2">
+                  <div className="grid gap-3">
                     <div>
-                      <div className="text-sm font-medium">Type</div>
-                      <Select
-                        value={newEvent.kind}
-                        onValueChange={(v) =>
+                      <div className="text-sm font-medium">Title</div>
+                      <Input
+                        value={newEvent.title}
+                        onChange={(e) =>
                           setNewEvent((prev) => ({
                             ...prev,
-                            kind: v as FamilyEvent["kind"],
+                            title: e.target.value,
                           }))
                         }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Birthday">Birthday</SelectItem>
-                          <SelectItem value="Reunion">Reunion</SelectItem>
-                          <SelectItem value="Holiday">Holiday</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium">Date</div>
-                      <SimpleDatePicker
-                        value={newEvent.dateISO}
-                        onChange={(value) =>
-                          setNewEvent((prev) => ({
-                            ...prev,
-                            dateISO: value,
-                          }))
-                        }
-                        placeholder="Select event date"
+                        placeholder="e.g., Cousins brunch"
                       />
                     </div>
-                <div>
-                  <div className="text-sm font-medium">Location</div>
-                  <Input
-                    value={newEvent.location}
-                    onChange={(e) =>
-                      setNewEvent((prev) => ({
-                        ...prev,
-                        location: e.target.value,
-                      }))
-                    }
-                    placeholder="Optional"
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-medium">Notes</div>
-                <Textarea
-                  value={newEvent.notes}
-                  onChange={(e) =>
-                    setNewEvent((prev) => ({
-                      ...prev,
-                      notes: e.target.value,
-                    }))
-                  }
-                  placeholder="Optional"
-                />
-              </div>
-              <Separator />
-              <div className="grid gap-3">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <div className="text-sm font-medium">Media type</div>
-                    <Select
-                      value={newEvent.mediaType}
-                      onValueChange={(v) =>
-                        setNewEvent((prev) => ({
-                          ...prev,
-                          mediaType: v as MediaAsset["type"],
-                        }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="image">Image</SelectItem>
-                        <SelectItem value="video">Video</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    {newEvent.mediaType === "video" ? (
-                      <Clapperboard className="w-8 h-8 mb-2 text-muted-foreground" />
-                    ) : (
-                      <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
-                    )}
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      <span className="font-semibold">Click to upload</span> or
-                      drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {newEvent.mediaType === "video"
-                        ? "MP4, MOV, AVI"
-                        : "PNG, JPG, GIF"}
-                    </p>
-                  </div>
-                  <Input
-                    type="file"
-                    className="hidden"
-                    accept={
-                      newEvent.mediaType === "video" ? "video/*" : "image/*"
-                    }
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const url = await uploadFile(file);
-                          setNewEvent((prev) => ({ ...prev, mediaUrl: url }));
-                        } catch (error) {
-                          console.error("Upload failed:", error);
-                          alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                          const url = URL.createObjectURL(file);
-                          setNewEvent((prev) => ({ ...prev, mediaUrl: url }));
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div>
+                        <div className="text-sm font-medium">Type</div>
+                        <Select
+                          value={newEvent.kind}
+                          onValueChange={(v) =>
+                            setNewEvent((prev) => ({
+                              ...prev,
+                              kind: v as FamilyEvent["kind"],
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Birthday">Birthday</SelectItem>
+                            <SelectItem value="Reunion">Reunion</SelectItem>
+                            <SelectItem value="Holiday">Holiday</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">Date</div>
+                        <SimpleDatePicker
+                          value={newEvent.dateISO}
+                          onChange={(value) =>
+                            setNewEvent((prev) => ({
+                              ...prev,
+                              dateISO: value,
+                            }))
+                          }
+                          placeholder="Select event date"
+                        />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">Location</div>
+                        <Input
+                          value={newEvent.location}
+                          onChange={(e) =>
+                            setNewEvent((prev) => ({
+                              ...prev,
+                              location: e.target.value,
+                            }))
+                          }
+                          placeholder="Optional"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Notes</div>
+                      <Textarea
+                        value={newEvent.notes}
+                        onChange={(e) =>
+                          setNewEvent((prev) => ({
+                            ...prev,
+                            notes: e.target.value,
+                          }))
                         }
-                      }
-                    }}
-                  />
-                </label>
-                <MediaTile
-                  media={
-                    newEvent.mediaUrl.trim()
-                      ? ({
-                          type: newEvent.mediaType,
-                          url: safeUrl(newEvent.mediaUrl),
-                          alt: newEvent.title.trim() || "",
-                        } as MediaAsset)
-                      : undefined
-                  }
-                  className="aspect-video"
-                />
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <Separator />
+                    <div className="grid gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <div className="text-sm font-medium">Media type</div>
+                          <Select
+                            value={newEvent.mediaType}
+                            onValueChange={(v) =>
+                              setNewEvent((prev) => ({
+                                ...prev,
+                                mediaType: v as MediaAsset["type"],
+                              }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="image">Image</SelectItem>
+                              <SelectItem value="video">Video</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          {newEvent.mediaType === "video" ? (
+                            <Clapperboard className="w-8 h-8 mb-2 text-muted-foreground" />
+                          ) : (
+                            <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
+                          )}
+                          <p className="mb-2 text-sm text-muted-foreground">
+                            <span className="font-semibold">Click to upload</span> or
+                            drag and drop
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {newEvent.mediaType === "video"
+                              ? "MP4, MOV, AVI"
+                              : "PNG, JPG, GIF"}
+                          </p>
+                        </div>
+                        <Input
+                          type="file"
+                          className="hidden"
+                          accept={
+                            newEvent.mediaType === "video" ? "video/*" : "image/*"
+                          }
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const url = await uploadFile(file);
+                                setNewEvent((prev) => ({ ...prev, mediaUrl: url }));
+                              } catch (error) {
+                                console.error("Upload failed:", error);
+                                alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                                const url = URL.createObjectURL(file);
+                                setNewEvent((prev) => ({ ...prev, mediaUrl: url }));
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                      <MediaTile
+                        media={
+                          newEvent.mediaUrl.trim()
+                            ? ({
+                              type: newEvent.mediaType,
+                              url: safeUrl(newEvent.mediaUrl),
+                              alt: newEvent.title.trim() || "",
+                            } as MediaAsset)
+                            : undefined
+                        }
+                        className="aspect-video"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="secondary" onClick={() => setEditingEvent(null)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (!editingEvent) return;
-                  const mediaUrl = safeUrl(newEvent.mediaUrl);
-                  await updateEvent({
-                    id: editingEvent,
-                    title: newEvent.title.trim(),
-                    dateISO: newEvent.dateISO,
-                    location: newEvent.location.trim() || undefined,
-                    kind: newEvent.kind,
-                    notes: newEvent.notes.trim() || undefined,
-                    media: mediaUrl
-                      ? ({
+              <DialogFooter className="p-6 bg-muted/30 flex flex-row items-center justify-end gap-2">
+                <Button variant="secondary" onClick={() => setEditingEvent(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!editingEvent) return;
+                    const mediaUrl = safeUrl(newEvent.mediaUrl);
+                    await updateEvent({
+                      id: editingEvent,
+                      title: newEvent.title.trim(),
+                      dateISO: newEvent.dateISO,
+                      location: newEvent.location.trim() || undefined,
+                      kind: newEvent.kind,
+                      notes: newEvent.notes.trim() || undefined,
+                      media: mediaUrl
+                        ? ({
                           type: newEvent.mediaType,
                           url: mediaUrl,
                           alt:
@@ -1910,14 +1965,15 @@ export default function FamilyHubPage() {
                               ? newEvent.title.trim()
                               : undefined,
                         } as MediaAsset)
-                      : undefined,
-                  });
-                  setEditingEvent(null);
-                }}
-              >
-                Update
-              </Button>
-            </DialogFooter>
+                        : undefined,
+                    });
+                    setEditingEvent(null);
+                  }}
+                >
+                  Update
+                </Button>
+              </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -1925,167 +1981,174 @@ export default function FamilyHubPage() {
           open={editingNews !== null}
           onOpenChange={(open) => !open && setEditingNews(null)}
         >
-          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit News</DialogTitle>
-              <DialogDescription>Update news information.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-3">
-              <div>
-                <div className="text-sm font-medium">Title</div>
-                <Input
-                  value={newNews.title}
-                  onChange={(e) =>
-                    setNewNews((prev) => ({
-                      ...prev,
-                      title: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g., New baby announcement"
-                />
+          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto rounded-2xl border-none p-0 bg-transparent shadow-none [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:bg-black/20 [&>button]:hover:bg-black/40 [&>button]:rounded-full [&>button]:transition-all">
+            <div className="bg-card/95 backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col h-full max-h-[90dvh]">
+              <div className="p-6 pb-4 bg-linear-to-br from-primary/10 via-transparent to-transparent">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/60">Edit News</DialogTitle>
+                  <DialogDescription className="text-muted-foreground/80">Update news content.</DialogDescription>
+                </DialogHeader>
               </div>
-              <div>
-                <div className="text-sm font-medium">Date</div>
-                <SimpleDatePicker
-                  value={newNews.dateISO}
-                  onChange={(value) =>
-                    setNewNews((prev) => ({
-                      ...prev,
-                      dateISO: value,
-                    }))
-                  }
-                  placeholder="Select news date"
-                />
-              </div>
-              <div>
-                <div className="text-sm font-medium">Summary</div>
-                <Textarea
-                  value={newNews.summary}
-                  onChange={(e) =>
-                    setNewNews((prev) => ({
-                      ...prev,
-                      summary: e.target.value,
-                    }))
-                  }
-                  placeholder="What's new?"
-                />
-              </div>
-              <div>
-                <div className="text-sm font-medium mb-2">Tags</div>
-                <div className="flex flex-wrap gap-2">
-                  {["Update", "Milestone", "Reminder"].map((t) => (
-                    <Badge
-                      key={t}
-                      variant={newNews.tags.includes(t as any) ? tagVariant(t as any) : "outline"}
-                      className="cursor-pointer transition-all active:scale-95"
-                      onClick={() => {
-                        const tags = [...newNews.tags];
-                        if (tags.includes(t as any)) {
-                          if (tags.length > 1) {
-                            setNewNews(prev => ({ ...prev, tags: tags.filter(x => x !== t) as any }));
+              <div className="px-6 pb-6 overflow-y-auto flex-1 custom-scrollbar">
+                <div className="grid gap-4 mt-2">
+                  <div className="grid gap-3">
+                    <div>
+                      <div className="text-sm font-medium">Title</div>
+                      <Input
+                        value={newNews.title}
+                        onChange={(e) =>
+                          setNewNews((prev) => ({
+                            ...prev,
+                            title: e.target.value,
+                          }))
+                        }
+                        placeholder="e.g., New baby announcement"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Date</div>
+                      <SimpleDatePicker
+                        value={newNews.dateISO}
+                        onChange={(value) =>
+                          setNewNews((prev) => ({
+                            ...prev,
+                            dateISO: value,
+                          }))
+                        }
+                        placeholder="Select news date"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Summary</div>
+                      <Textarea
+                        value={newNews.summary}
+                        onChange={(e) =>
+                          setNewNews((prev) => ({
+                            ...prev,
+                            summary: e.target.value,
+                          }))
+                        }
+                        placeholder="What's new?"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium mb-2">Tags</div>
+                      <div className="flex flex-wrap gap-2">
+                        {["Update", "Milestone", "Reminder"].map((t) => (
+                          <Badge
+                            key={t}
+                            variant={newNews.tags.includes(t as any) ? tagVariant(t as any) : "outline"}
+                            className="cursor-pointer transition-all active:scale-95"
+                            onClick={() => {
+                              const tags = [...newNews.tags];
+                              if (tags.includes(t as any)) {
+                                if (tags.length > 1) {
+                                  setNewNews(prev => ({ ...prev, tags: tags.filter(x => x !== t) as any }));
+                                }
+                              } else {
+                                setNewNews(prev => ({ ...prev, tags: [...tags, t] as any }));
+                              }
+                            }}
+                          >
+                            {t}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <Separator />
+                    <div className="grid gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <div className="text-sm font-medium">Media type</div>
+                          <Select
+                            value={newNews.mediaType}
+                            onValueChange={(v) =>
+                              setNewNews((prev) => ({
+                                ...prev,
+                                mediaType: v as MediaAsset["type"],
+                              }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="image">Image</SelectItem>
+                              <SelectItem value="video">Video</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          {newNews.mediaType === "video" ? (
+                            <Clapperboard className="w-8 h-8 mb-2 text-muted-foreground" />
+                          ) : (
+                            <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
+                          )}
+                          <p className="mb-2 text-sm text-muted-foreground">
+                            <span className="font-semibold">Click to upload</span> or
+                            drag and drop
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {newNews.mediaType === "video"
+                              ? "MP4, MOV, AVI"
+                              : "PNG, JPG, GIF"}
+                          </p>
+                        </div>
+                        <Input
+                          type="file"
+                          className="hidden"
+                          accept={
+                            newNews.mediaType === "video" ? "video/*" : "image/*"
                           }
-                        } else {
-                          setNewNews(prev => ({ ...prev, tags: [...tags, t] as any }));
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const url = await uploadFile(file);
+                                setNewNews((prev) => ({ ...prev, mediaUrl: url }));
+                              } catch (error) {
+                                console.error("Upload failed:", error);
+                                const url = URL.createObjectURL(file);
+                                setNewNews((prev) => ({ ...prev, mediaUrl: url }));
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                      <MediaTile
+                        media={
+                          newNews.mediaUrl.trim()
+                            ? ({
+                              type: newNews.mediaType,
+                              url: safeUrl(newNews.mediaUrl),
+                              alt: newNews.title.trim() || "",
+                            } as MediaAsset)
+                            : undefined
                         }
-                      }}
-                    >
-                      {t}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <Separator />
-              <div className="grid gap-3">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <div className="text-sm font-medium">Media type</div>
-                    <Select
-                      value={newNews.mediaType}
-                      onValueChange={(v) =>
-                        setNewNews((prev) => ({
-                          ...prev,
-                          mediaType: v as MediaAsset["type"],
-                        }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="image">Image</SelectItem>
-                        <SelectItem value="video">Video</SelectItem>
-                      </SelectContent>
-                    </Select>
+                        className="aspect-video"
+                      />
+                    </div>
                   </div>
                 </div>
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    {newNews.mediaType === "video" ? (
-                      <Clapperboard className="w-8 h-8 mb-2 text-muted-foreground" />
-                    ) : (
-                      <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
-                    )}
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      <span className="font-semibold">Click to upload</span> or
-                      drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {newNews.mediaType === "video"
-                        ? "MP4, MOV, AVI"
-                        : "PNG, JPG, GIF"}
-                    </p>
-                  </div>
-                  <Input
-                    type="file"
-                    className="hidden"
-                    accept={
-                      newNews.mediaType === "video" ? "video/*" : "image/*"
-                    }
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const url = await uploadFile(file);
-                          setNewNews((prev) => ({ ...prev, mediaUrl: url }));
-                        } catch (error) {
-                          console.error("Upload failed:", error);
-                          const url = URL.createObjectURL(file);
-                          setNewNews((prev) => ({ ...prev, mediaUrl: url }));
-                        }
-                      }
-                    }}
-                  />
-                </label>
-                <MediaTile
-                  media={
-                    newNews.mediaUrl.trim()
-                      ? ({
-                          type: newNews.mediaType,
-                          url: safeUrl(newNews.mediaUrl),
-                          alt: newNews.title.trim() || "",
-                        } as MediaAsset)
-                      : undefined
-                  }
-                  className="aspect-video"
-                />
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="secondary" onClick={() => setEditingNews(null)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (!editingNews) return;
-                  const mediaUrl = safeUrl(newNews.mediaUrl);
-                  await updateNews({
-                    id: editingNews,
-                    title: newNews.title.trim(),
-                    dateISO: newNews.dateISO,
-                    summary: newNews.summary.trim(),
-                    tags: newNews.tags,
-                    media: mediaUrl
-                      ? ({
+              <DialogFooter className="p-6 bg-muted/30 flex flex-row items-center justify-end gap-2">
+                <Button variant="secondary" onClick={() => setEditingNews(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!editingNews) return;
+                    const mediaUrl = safeUrl(newNews.mediaUrl);
+                    await updateNews({
+                      id: editingNews,
+                      title: newNews.title.trim(),
+                      dateISO: newNews.dateISO,
+                      summary: newNews.summary.trim(),
+                      tags: newNews.tags,
+                      media: mediaUrl
+                        ? ({
                           type: newNews.mediaType,
                           url: mediaUrl,
                           alt:
@@ -2093,14 +2156,15 @@ export default function FamilyHubPage() {
                               ? newNews.title.trim()
                               : undefined,
                         } as MediaAsset)
-                      : undefined,
-                  });
-                  setEditingNews(null);
-                }}
-              >
-                Update
-              </Button>
-            </DialogFooter>
+                        : undefined,
+                    });
+                    setEditingNews(null);
+                  }}
+                >
+                  Update
+                </Button>
+              </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -2108,124 +2172,189 @@ export default function FamilyHubPage() {
           open={editingPerson !== null}
           onOpenChange={(open) => !open && setEditingPerson(null)}
         >
-          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Family Member</DialogTitle>
-              <DialogDescription>
-                Update family member information.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-3">
-              <div>
-                <div className="text-sm font-medium">Name</div>
-                <Input
-                  value={newPerson.name}
-                  onChange={(e) =>
-                    setNewPerson((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g., Taylor Lee"
-                />
+          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto rounded-2xl border-none p-0 bg-transparent shadow-none [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:bg-black/20 [&>button]:hover:bg-black/40 [&>button]:rounded-full [&>button]:transition-all">
+            <div className="bg-card/95 backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col h-full max-h-[90dvh]">
+              <div className="p-6 pb-4 bg-linear-to-br from-primary/10 via-transparent to-transparent">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/60">Edit Family Member</DialogTitle>
+                  <DialogDescription className="text-muted-foreground/80">
+                    Update family member information and relationships.
+                  </DialogDescription>
+                </DialogHeader>
               </div>
-              <div>
-                <div className="text-sm font-medium mb-2">Person image</div>
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      <span className="font-semibold">Click to upload</span> or
-                      drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      PNG, JPG, GIF
-                    </p>
-                  </div>
-                  <Input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const url = await uploadFile(file);
-                          setNewPerson((prev) => ({ ...prev, imageUrl: url }));
-                        } catch (error) {
-                          console.error("Upload failed:", error);
-                          const url = URL.createObjectURL(file);
-                          setNewPerson((prev) => ({ ...prev, imageUrl: url }));
+
+              <div className="px-6 pb-6 overflow-y-auto flex-1 custom-scrollbar">
+                <div className="grid gap-4 mt-2">
+                  <div className="grid gap-3">
+                    <div>
+                      <div className="text-sm font-medium">Name</div>
+                      <Input
+                        value={newPerson.name}
+                        onChange={(e) =>
+                          setNewPerson((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                          }))
                         }
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <div className="text-sm font-medium">Birth year</div>
-                  <Input
-                    type="number"
-                    value={newPerson.birthYear}
-                    onChange={(e) =>
-                      setNewPerson((prev) => ({
-                        ...prev,
-                        birthYear: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., 1990"
-                    min="1900"
-                    max={new Date().getFullYear()}
-                  />
+                        placeholder="e.g., Taylor Lee"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium mb-2">Person image</div>
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
+                          <p className="mb-2 text-sm text-muted-foreground">
+                            <span className="font-semibold">Click to upload</span> or
+                            drag and drop
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            PNG, JPG, GIF
+                          </p>
+                        </div>
+                        <Input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const url = await uploadFile(file);
+                                setNewPerson((prev) => ({ ...prev, imageUrl: url }));
+                              } catch (error) {
+                                console.error("Upload failed:", error);
+                                const url = URL.createObjectURL(file);
+                                setNewPerson((prev) => ({ ...prev, imageUrl: url }));
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="text-sm font-medium">Birth year</div>
+                        <Input
+                          type="number"
+                          value={newPerson.birthYear}
+                          onChange={(e) =>
+                            setNewPerson((prev) => ({
+                              ...prev,
+                              birthYear: e.target.value,
+                            }))
+                          }
+                          placeholder="e.g., 1990"
+                          min="1900"
+                          max={new Date().getFullYear()}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Notes</div>
+                      <Textarea
+                        value={newPerson.note}
+                        onChange={(e) =>
+                          setNewPerson((prev) => ({
+                            ...prev,
+                            note: e.target.value,
+                          }))
+                        }
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <div className="text-sm font-medium mb-1">Father (Optional)</div>
+                          <Select
+                            value={newPerson.fatherId}
+                            onValueChange={(val) =>
+                              setNewPerson((prev) => ({
+                                ...prev,
+                                fatherId: val === "root" ? "" : val,
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Unknown" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="root">Unknown</SelectItem>
+                              {familyNodes.map((n) => (
+                                <SelectItem key={n._id} value={n._id}>
+                                  {n.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <div className="text-sm font-medium mb-1">Mother (Optional)</div>
+                          <Select
+                            value={newPerson.motherId}
+                            onValueChange={(val) =>
+                              setNewPerson((prev) => ({
+                                ...prev,
+                                motherId: val === "root" ? "" : val,
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Unknown" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="root">Unknown</SelectItem>
+                              {familyNodes.map((n) => (
+                                <SelectItem key={n._id} value={n._id}>
+                                  {n.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className="text-sm font-medium">Notes</div>
-                <Textarea
-                  value={newPerson.note}
-                  onChange={(e) =>
-                    setNewPerson((prev) => ({
-                      ...prev,
-                      note: e.target.value,
-                    }))
-                  }
-                  placeholder="Optional"
-                />
-              </div>
+              <DialogFooter className="p-6 bg-muted/30 flex flex-row items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditingPerson(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={async () => {
+                    if (!editingPerson) return;
+                    const node = familyNodes.find((n) => n._id === editingPerson);
+                    if (node) {
+                      const birthYear = Number.parseInt(
+                        newPerson.birthYear.trim(),
+                        10
+                      );
+                      await updateFamilyMember({
+                        id: node._id,
+                        name: newPerson.name.trim(),
+                        imageUrl: safeUrl(newPerson.imageUrl) || undefined,
+                        birthYear: Number.isFinite(birthYear)
+                          ? birthYear
+                          : undefined,
+                        note: newPerson.note.trim() || undefined,
+                        fatherId: (newPerson.fatherId as Id<"familyNodes">) || undefined,
+                        motherId: (newPerson.motherId as Id<"familyNodes">) || undefined,
+                      });
+                      setEditingPerson(null);
+                    }
+                  }}
+                >
+                  Update
+                </Button>
+              </DialogFooter>
             </div>
-            <DialogFooter>
-              <Button
-                variant="secondary"
-                onClick={() => setEditingPerson(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (!editingPerson) return;
-                  const node = familyNodes.find((n) => n._id === editingPerson);
-                  if (node) {
-                    const birthYear = Number.parseInt(
-                      newPerson.birthYear.trim(),
-                      10
-                    );
-                    await updateFamilyMember({
-                      id: node._id,
-                      name: newPerson.name.trim(),
-                      imageUrl: safeUrl(newPerson.imageUrl) || undefined,
-                      birthYear: Number.isFinite(birthYear)
-                        ? birthYear
-                        : undefined,
-                      note: newPerson.note.trim() || undefined,
-                    });
-                    setEditingPerson(null);
-                  }
-                }}
-              >
-                Update
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -2233,82 +2362,88 @@ export default function FamilyHubPage() {
           open={editingFamily !== null}
           onOpenChange={(open) => !open && setEditingFamily(null)}
         >
-          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Family</DialogTitle>
-              <DialogDescription>
-                Update family name and image.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-3">
-              <div>
-                <div className="text-sm font-medium">Family Name</div>
-                <Input
-                  value={newFamily.name}
-                  onChange={(e) =>
-                    setNewFamily((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g. The Smiths"
-                />
+          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto rounded-2xl border-none p-0 bg-transparent shadow-none [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:bg-black/20 [&>button]:hover:bg-black/40 [&>button]:rounded-full [&>button]:transition-all">
+            <div className="bg-card/95 backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col h-full max-h-[90dvh]">
+              <div className="p-6 pb-4 bg-linear-to-br from-primary/10 via-transparent to-transparent">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/60">Edit Family</DialogTitle>
+                  <DialogDescription className="text-muted-foreground/80">Update family name and image.</DialogDescription>
+                </DialogHeader>
               </div>
-              <div>
-                <div className="text-sm font-medium mb-2">Family image</div>
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      <span className="font-semibold">Click to upload</span> or
-                      drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      PNG, JPG, GIF
-                    </p>
-                  </div>
-                  <Input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const url = await uploadFile(file);
-                          setNewFamily((prev) => ({ ...prev, imageUrl: url }));
-                        } catch (error) {
-                          console.error("Upload failed:", error);
-                          const url = URL.createObjectURL(file);
-                          setNewFamily((prev) => ({ ...prev, imageUrl: url }));
+              <div className="px-6 pb-6 overflow-y-auto flex-1 custom-scrollbar">
+                <div className="grid gap-4 mt-2">
+                  <div className="grid gap-3">
+                    <div>
+                      <div className="text-sm font-medium">Family Name</div>
+                      <Input
+                        value={newFamily.name}
+                        onChange={(e) =>
+                          setNewFamily((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                          }))
                         }
-                      }
+                        placeholder="e.g. The Smiths"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium mb-2">Family image</div>
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
+                          <p className="mb-2 text-sm text-muted-foreground">
+                            <span className="font-semibold">Click to upload</span> or
+                            drag and drop
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            PNG, JPG, GIF
+                          </p>
+                        </div>
+                        <Input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const url = await uploadFile(file);
+                                setNewFamily((prev) => ({ ...prev, imageUrl: url }));
+                              } catch (error) {
+                                console.error("Upload failed:", error);
+                                const url = URL.createObjectURL(file);
+                                setNewFamily((prev) => ({ ...prev, imageUrl: url }));
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter className="p-6 bg-muted/30 flex flex-row items-center justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setEditingFamily(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      if (!editingFamily) return;
+                      await updateFamily({
+                        id: editingFamily,
+                        name: newFamily.name.trim(),
+                        imageUrl: safeUrl(newFamily.imageUrl) || undefined,
+                      });
+                      setEditingFamily(null);
                     }}
-                  />
-                </label>
+                  >
+                    Update
+                  </Button>
+                </DialogFooter>
               </div>
             </div>
-            <DialogFooter>
-              <Button
-                variant="secondary"
-                onClick={() => setEditingFamily(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (!editingFamily) return;
-                  await updateFamily({
-                    id: editingFamily,
-                    name: newFamily.name.trim(),
-                    imageUrl: safeUrl(newFamily.imageUrl) || undefined,
-                  });
-                  setEditingFamily(null);
-                }}
-              >
-                Update
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -2350,7 +2485,7 @@ export default function FamilyHubPage() {
                     <ThemeToggle />
                   </div>
                 </div>
-                
+
                 {/* Admin buttons row - responsive layout */}
                 {isAdmin && (
                   <div className="flex gap-3 items-center justify-center">
@@ -2368,666 +2503,702 @@ export default function FamilyHubPage() {
                             <span className="sm:hidden">Add</span>
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle>Add to family hub</DialogTitle>
-                              <DialogDescription>
-                                Add an event, a news post, or a family member.
-                              </DialogDescription>
-                            </DialogHeader>
+                        <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto rounded-2xl border-none p-0 bg-transparent shadow-none [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:bg-black/20 [&>button]:hover:bg-black/40 [&>button]:rounded-full [&>button]:transition-all">
+                          <div className="bg-card/95 backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col h-full max-h-[90dvh]">
+                            <div className="p-6 pb-4 bg-linear-to-br from-primary/10 via-transparent to-transparent">
+                              <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/60">Add to family hub</DialogTitle>
+                                <DialogDescription className="text-muted-foreground/80">
+                                  Add an event, a news post, or a family member.
+                                </DialogDescription>
+                              </DialogHeader>
+                            </div>
 
-                            <Tabs
-                              value={addMode}
-                              onValueChange={(v) =>
-                                setAddMode(v as "event" | "news" | "person" | "social" | "family")
-                              }
-                              className="mt-2"
-                            >
-                              <TabsList className="flex w-full h-auto overflow-x-auto scrollbar-hide whitespace-nowrap justify-start gap-1 p-1 bg-muted/40 mb-4 items-center">
-                                <TabsTrigger value="event" className="px-3 h-8 text-xs sm:text-sm">Event</TabsTrigger>
-                                <TabsTrigger value="news" className="px-3 h-8 text-xs sm:text-sm">News</TabsTrigger>
-                                <TabsTrigger value="person" className="px-3 h-8 text-xs sm:text-sm">
-                                  Member
-                                </TabsTrigger>
-                                <TabsTrigger value="social" className="px-3 h-8 text-xs sm:text-sm">
-                                  Social
-                                </TabsTrigger>
-                                <TabsTrigger value="family" className="px-3 h-8 text-xs sm:text-sm">
-                                  Family
-                                </TabsTrigger>
-                              </TabsList>
+                            <div className="px-6 pb-6 overflow-y-auto flex-1 custom-scrollbar">
 
-                              <TabsContent value="event" className="mt-3">
-                                <div className="grid gap-3">
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      Title
-                                    </div>
-                                    <Input
-                                      value={newEvent.title}
-                                      onChange={(e) =>
-                                        setNewEvent((prev) => ({
-                                          ...prev,
-                                          title: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="e.g., Cousins brunch"
-                                    />
-                                  </div>
+                              <Tabs
+                                value={addMode}
+                                onValueChange={(v) =>
+                                  setAddMode(v as "event" | "news" | "person" | "social" | "family")
+                                }
+                                className="mt-2"
+                              >
+                                <TabsList className="flex w-full h-auto overflow-x-auto scrollbar-hide whitespace-nowrap justify-start gap-1 p-1 bg-muted/40 mb-4 items-center">
+                                  <TabsTrigger value="event" className="px-3 h-8 text-xs sm:text-sm">Event</TabsTrigger>
+                                  <TabsTrigger value="news" className="px-3 h-8 text-xs sm:text-sm">News</TabsTrigger>
+                                  <TabsTrigger value="person" className="px-3 h-8 text-xs sm:text-sm">
+                                    Member
+                                  </TabsTrigger>
+                                  <TabsTrigger value="social" className="px-3 h-8 text-xs sm:text-sm">
+                                    Social
+                                  </TabsTrigger>
+                                  <TabsTrigger value="family" className="px-3 h-8 text-xs sm:text-sm">
+                                    Family
+                                  </TabsTrigger>
+                                </TabsList>
 
-                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                <TabsContent value="event" className="mt-3">
+                                  <div className="grid gap-3">
                                     <div>
                                       <div className="text-sm font-medium">
-                                        Type
+                                        Title
                                       </div>
-                                      <Select
-                                        value={newEvent.kind}
-                                        onValueChange={(v) =>
+                                      <Input
+                                        value={newEvent.title}
+                                        onChange={(e) =>
                                           setNewEvent((prev) => ({
                                             ...prev,
-                                            kind: v as FamilyEvent["kind"],
+                                            title: e.target.value,
                                           }))
                                         }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="Birthday">
-                                            Birthday
-                                          </SelectItem>
-                                          <SelectItem value="Reunion">
-                                            Reunion
-                                          </SelectItem>
-                                          <SelectItem value="Holiday">
-                                            Holiday
-                                          </SelectItem>
-                                          <SelectItem value="Other">
-                                            Other
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                        placeholder="e.g., Cousins brunch"
+                                      />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                      <div>
+                                        <div className="text-sm font-medium">
+                                          Type
+                                        </div>
+                                        <Select
+                                          value={newEvent.kind}
+                                          onValueChange={(v) =>
+                                            setNewEvent((prev) => ({
+                                              ...prev,
+                                              kind: v as FamilyEvent["kind"],
+                                            }))
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="Birthday">
+                                              Birthday
+                                            </SelectItem>
+                                            <SelectItem value="Reunion">
+                                              Reunion
+                                            </SelectItem>
+                                            <SelectItem value="Holiday">
+                                              Holiday
+                                            </SelectItem>
+                                            <SelectItem value="Other">
+                                              Other
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <div className="text-sm font-medium">
+                                          Date
+                                        </div>
+                                        <SimpleDatePicker
+                                          value={newEvent.dateISO}
+                                          onChange={(value) =>
+                                            setNewEvent((prev) => ({
+                                              ...prev,
+                                              dateISO: value,
+                                            }))
+                                          }
+                                          placeholder="Select event date"
+                                        />
+                                      </div>
+                                      <div>
+                                        <div className="text-sm font-medium">
+                                          Location
+                                        </div>
+                                        <Input
+                                          value={newEvent.location}
+                                          onChange={(e) =>
+                                            setNewEvent((prev) => ({
+                                              ...prev,
+                                              location: e.target.value,
+                                            }))
+                                          }
+                                          placeholder="Optional"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        Notes
+                                      </div>
+                                      <Textarea
+                                        value={newEvent.notes}
+                                        onChange={(e) =>
+                                          setNewEvent((prev) => ({
+                                            ...prev,
+                                            notes: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="Optional"
+                                      />
+                                    </div>
+
+                                    <Separator />
+
+                                    <div className="grid gap-3">
+                                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div>
+                                          <div className="text-sm font-medium">
+                                            Media type
+                                          </div>
+                                          <Select
+                                            value={newEvent.mediaType}
+                                            onValueChange={(v) =>
+                                              setNewEvent((prev) => ({
+                                                ...prev,
+                                                mediaType:
+                                                  v as MediaAsset["type"],
+                                              }))
+                                            }
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Choose…" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="image">
+                                                Image
+                                              </SelectItem>
+                                              <SelectItem value="video">
+                                                Video
+                                              </SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div></div>
+                                      </div>
+                                      <Separator />
+                                      <SafeFileUpload
+                                        onFileSelect={(url) => setNewEvent(prev => ({ ...prev, mediaUrl: url }))}
+                                        accept={newEvent.mediaType === "video" ? "video/*" : "image/*"}
+                                        mediaType={newEvent.mediaType}
+                                      />
+
+                                      <SafeMediaPreview
+                                        url={newEvent.mediaUrl}
+                                        type={newEvent.mediaType}
+                                        alt={newEvent.title}
+                                        className="aspect-video"
+                                      />
+                                    </div>
+                                  </div>
+                                </TabsContent>
+
+                                <TabsContent value="news" className="mt-3">
+                                  <div className="grid gap-3">
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        Title
+                                      </div>
+                                      <Input
+                                        value={newNews.title}
+                                        onChange={(e) =>
+                                          setNewNews((prev) => ({
+                                            ...prev,
+                                            title: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="e.g., New baby announcement"
+                                      />
                                     </div>
                                     <div>
                                       <div className="text-sm font-medium">
                                         Date
                                       </div>
                                       <SimpleDatePicker
-                                        value={newEvent.dateISO}
+                                        value={newNews.dateISO}
                                         onChange={(value) =>
-                                          setNewEvent((prev) => ({
+                                          setNewNews((prev) => ({
                                             ...prev,
                                             dateISO: value,
                                           }))
                                         }
-                                        placeholder="Select event date"
+                                        placeholder="Select news date"
                                       />
                                     </div>
                                     <div>
                                       <div className="text-sm font-medium">
-                                        Location
+                                        Summary
+                                      </div>
+                                      <Textarea
+                                        value={newNews.summary}
+                                        onChange={(e) =>
+                                          setNewNews((prev) => ({
+                                            ...prev,
+                                            summary: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="What’s new?"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <div className="text-sm font-medium mb-2">
+                                        Tags
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        {["Update", "Milestone", "Reminder"].map(
+                                          (t) => (
+                                            <Badge
+                                              key={t}
+                                              variant={
+                                                newNews.tags.includes(t as any)
+                                                  ? tagVariant(t as any)
+                                                  : "outline"
+                                              }
+                                              className="cursor-pointer transition-all active:scale-95 px-2 py-0.5"
+                                              onClick={() => {
+                                                const tags = [...newNews.tags];
+                                                if (tags.includes(t as any)) {
+                                                  if (tags.length > 1) {
+                                                    setNewNews((prev) => ({
+                                                      ...prev,
+                                                      tags: tags.filter(
+                                                        (x) => x !== t
+                                                      ) as any,
+                                                    }));
+                                                  }
+                                                } else {
+                                                  setNewNews((prev) => ({
+                                                    ...prev,
+                                                    tags: [...tags, t] as any,
+                                                  }));
+                                                }
+                                              }}
+                                            >
+                                              {t}
+                                            </Badge>
+                                          )
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <Separator />
+
+                                    <div className="grid gap-3">
+                                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div>
+                                          <div className="text-sm font-medium">
+                                            Media type
+                                          </div>
+                                          <Select
+                                            value={newNews.mediaType}
+                                            onValueChange={(v) =>
+                                              setNewNews((prev) => ({
+                                                ...prev,
+                                                mediaType:
+                                                  v as MediaAsset["type"],
+                                              }))
+                                            }
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Choose…" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="image">
+                                                Image
+                                              </SelectItem>
+                                              <SelectItem value="video">
+                                                Video
+                                              </SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div></div>
+                                      </div>
+                                      <Separator />
+                                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                          {newNews.mediaType === "video" ? (
+                                            <Clapperboard className="w-8 h-8 mb-2 text-muted-foreground" />
+                                          ) : (
+                                            <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
+                                          )}
+                                          <p className="mb-2 text-sm text-muted-foreground">
+                                            <span className="font-semibold">
+                                              Click to upload
+                                            </span>{" "}
+                                            or drag and drop
+                                          </p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {newNews.mediaType === "video"
+                                              ? "MP4, MOV, AVI"
+                                              : "PNG, JPG, GIF"}
+                                          </p>
+                                        </div>
+                                        <Input
+                                          type="file"
+                                          className="hidden"
+                                          accept={
+                                            newNews.mediaType === "video"
+                                              ? "video/*"
+                                              : "image/*"
+                                          }
+                                          onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                              try {
+                                                const url = await uploadFile(file);
+                                                setNewNews((prev) => ({ ...prev, mediaUrl: url }));
+                                              } catch (error) {
+                                                console.error("Upload failed:", error);
+                                                alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                                                const url = URL.createObjectURL(file);
+                                                setNewNews((prev) => ({ ...prev, mediaUrl: url }));
+                                              }
+                                            }
+                                          }}
+                                        />
+                                      </label>
+
+                                      <MediaTile
+                                        media={
+                                          newNews.mediaUrl.trim()
+                                            ? ({
+                                              type: newNews.mediaType,
+                                              url: safeUrl(newNews.mediaUrl),
+                                              alt: newNews.title.trim() || "",
+                                            } as MediaAsset)
+                                            : undefined
+                                        }
+                                        className="aspect-video"
+                                      />
+                                    </div>
+                                  </div>
+                                </TabsContent>
+
+                                <TabsContent value="person" className="mt-3">
+                                  <div className="grid gap-3">
+                                    <div>
+                                      <div className="text-sm font-medium mb-1">
+                                        Family
+                                      </div>
+                                      <Select
+                                        value={newPerson.familyId}
+                                        onValueChange={(val) =>
+                                          setNewPerson((prev) => ({
+                                            ...prev,
+                                            familyId: val,
+                                            parentId: "", // Reset parent when family changes
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger className="w-full">
+                                          <SelectValue placeholder="Select family" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {families.map((f) => (
+                                            <SelectItem key={f._id} value={f._id}>
+                                              {f.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                      <div>
+                                        <div className="text-sm font-medium mb-1">
+                                          Father (Optional)
+                                        </div>
+                                        <Select
+                                          value={newPerson.fatherId}
+                                          onValueChange={(val) =>
+                                            setNewPerson((prev) => ({
+                                              ...prev,
+                                              fatherId: val === "root" ? "" : val,
+                                            }))
+                                          }
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Unknown" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="root">
+                                              Unknown
+                                            </SelectItem>
+                                            {addPersonFamilyNodes.map((n) => (
+                                              <SelectItem key={n._id} value={n._id}>
+                                                {n.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+
+                                      <div>
+                                        <div className="text-sm font-medium mb-1">
+                                          Mother (Optional)
+                                        </div>
+                                        <Select
+                                          value={newPerson.motherId}
+                                          onValueChange={(val) =>
+                                            setNewPerson((prev) => ({
+                                              ...prev,
+                                              motherId: val === "root" ? "" : val,
+                                            }))
+                                          }
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Unknown" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="root">
+                                              Unknown
+                                            </SelectItem>
+                                            {addPersonFamilyNodes.map((n) => (
+                                              <SelectItem key={n._id} value={n._id}>
+                                                {n.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        Name
                                       </div>
                                       <Input
-                                        value={newEvent.location}
+                                        value={newPerson.name}
                                         onChange={(e) =>
-                                          setNewEvent((prev) => ({
+                                          setNewPerson((prev) => ({
                                             ...prev,
-                                            location: e.target.value,
+                                            name: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="e.g., Taylor Lee"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <div className="text-sm font-medium mb-2">
+                                        Person image
+                                      </div>
+                                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                          <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
+                                          <p className="mb-2 text-sm text-muted-foreground">
+                                            <span className="font-semibold">
+                                              Click to upload
+                                            </span>{" "}
+                                            or drag and drop
+                                          </p>
+                                          <p className="text-xs text-muted-foreground">
+                                            PNG, JPG, GIF
+                                          </p>
+                                        </div>
+                                        <Input
+                                          type="file"
+                                          className="hidden"
+                                          accept="image/*"
+                                          onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                              try {
+                                                const url = await uploadFile(file);
+                                                setNewPerson((prev) => ({ ...prev, imageUrl: url }));
+                                              } catch (error) {
+                                                console.error("Upload failed:", error);
+                                                const url = URL.createObjectURL(file);
+                                                setNewPerson((prev) => ({ ...prev, imageUrl: url }));
+                                              }
+                                            }
+                                          }}
+                                        />
+                                      </label>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                      <div>
+                                        <div className="text-sm font-medium">
+                                          Birth year
+                                        </div>
+                                        <Input
+                                          type="number"
+                                          value={newPerson.birthYear}
+                                          onChange={(e) =>
+                                            setNewPerson((prev) => ({
+                                              ...prev,
+                                              birthYear: e.target.value,
+                                            }))
+                                          }
+                                          placeholder="e.g., 1990"
+                                          min="1900"
+                                          max={new Date().getFullYear()}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        Notes
+                                      </div>
+                                      <Textarea
+                                        value={newPerson.note}
+                                        onChange={(e) =>
+                                          setNewPerson((prev) => ({
+                                            ...prev,
+                                            note: e.target.value,
                                           }))
                                         }
                                         placeholder="Optional"
                                       />
                                     </div>
-                                  </div>
 
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      Notes
-                                    </div>
-                                    <Textarea
-                                      value={newEvent.notes}
-                                      onChange={(e) =>
-                                        setNewEvent((prev) => ({
-                                          ...prev,
-                                          notes: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="Optional"
-                                    />
-                                  </div>
-
-                                  <Separator />
-
-                                  <div className="grid gap-3">
-                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                      <div>
-                                        <div className="text-sm font-medium">
-                                          Media type
+                                    <div className="flex items-center gap-3 rounded-lg border p-3">
+                                      <div className="bg-muted size-10 overflow-hidden rounded-full border">
+                                        <img
+                                          src={
+                                            safeUrl(newPerson.imageUrl) ||
+                                            "/placeholder.svg"
+                                          }
+                                          alt={
+                                            newPerson.name.trim() ||
+                                            "New family member"
+                                          }
+                                          className="h-full w-full object-cover"
+                                          loading="lazy"
+                                          onError={(e) => {
+                                            e.currentTarget.src = "/placeholder.svg";
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="text-muted-foreground text-xs">
+                                          Preview
                                         </div>
-                                        <Select
-                                          value={newEvent.mediaType}
-                                          onValueChange={(v) =>
-                                            setNewEvent((prev) => ({
-                                              ...prev,
-                                              mediaType:
-                                                v as MediaAsset["type"],
-                                            }))
-                                          }
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Choose…" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="image">
-                                              Image
-                                            </SelectItem>
-                                            <SelectItem value="video">
-                                              Video
-                                            </SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div></div>
-                                    </div>
-                                    <Separator />
-                                    <SafeFileUpload
-                                      onFileSelect={(url) => setNewEvent(prev => ({ ...prev, mediaUrl: url }))}
-                                      accept={newEvent.mediaType === "video" ? "video/*" : "image/*"}
-                                      mediaType={newEvent.mediaType}
-                                    />
-
-                                    <SafeMediaPreview
-                                      url={newEvent.mediaUrl}
-                                      type={newEvent.mediaType}
-                                      alt={newEvent.title}
-                                      className="aspect-video"
-                                    />
-                                  </div>
-                                </div>
-                              </TabsContent>
-
-                              <TabsContent value="news" className="mt-3">
-                                <div className="grid gap-3">
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      Title
-                                    </div>
-                                    <Input
-                                      value={newNews.title}
-                                      onChange={(e) =>
-                                        setNewNews((prev) => ({
-                                          ...prev,
-                                          title: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="e.g., New baby announcement"
-                                    />
-                                  </div>
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      Date
-                                    </div>
-                                    <SimpleDatePicker
-                                      value={newNews.dateISO}
-                                      onChange={(value) =>
-                                        setNewNews((prev) => ({
-                                          ...prev,
-                                          dateISO: value,
-                                        }))
-                                      }
-                                      placeholder="Select news date"
-                                    />
-                                  </div>
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      Summary
-                                    </div>
-                                    <Textarea
-                                      value={newNews.summary}
-                                      onChange={(e) =>
-                                        setNewNews((prev) => ({
-                                          ...prev,
-                                          summary: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="What’s new?"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <div className="text-sm font-medium mb-2">
-                                      Tags
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                      {["Update", "Milestone", "Reminder"].map(
-                                        (t) => (
-                                          <Badge
-                                            key={t}
-                                            variant={
-                                              newNews.tags.includes(t as any)
-                                                ? tagVariant(t as any)
-                                                : "outline"
-                                            }
-                                            className="cursor-pointer transition-all active:scale-95 px-2 py-0.5"
-                                            onClick={() => {
-                                              const tags = [...newNews.tags];
-                                              if (tags.includes(t as any)) {
-                                                if (tags.length > 1) {
-                                                  setNewNews((prev) => ({
-                                                    ...prev,
-                                                    tags: tags.filter(
-                                                      (x) => x !== t
-                                                    ) as any,
-                                                  }));
-                                                }
-                                              } else {
-                                                setNewNews((prev) => ({
-                                                  ...prev,
-                                                  tags: [...tags, t] as any,
-                                                }));
-                                              }
-                                            }}
-                                          >
-                                            {t}
-                                          </Badge>
-                                        )
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <Separator />
-
-                                  <div className="grid gap-3">
-                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                      <div>
-                                        <div className="text-sm font-medium">
-                                          Media type
+                                        <div className="truncate text-sm font-medium">
+                                          {newPerson.name.trim() || "Name"}
                                         </div>
-                                        <Select
-                                          value={newNews.mediaType}
-                                          onValueChange={(v) =>
-                                            setNewNews((prev) => ({
-                                              ...prev,
-                                              mediaType:
-                                                v as MediaAsset["type"],
-                                            }))
-                                          }
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Choose…" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="image">
-                                              Image
-                                            </SelectItem>
-                                            <SelectItem value="video">
-                                              Video
-                                            </SelectItem>
-                                          </SelectContent>
-                                        </Select>
                                       </div>
-                                      <div></div>
                                     </div>
-                                    <Separator />
-                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
-                                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        {newNews.mediaType === "video" ? (
-                                          <Clapperboard className="w-8 h-8 mb-2 text-muted-foreground" />
-                                        ) : (
-                                          <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
-                                        )}
-                                        <p className="mb-2 text-sm text-muted-foreground">
-                                          <span className="font-semibold">
-                                            Click to upload
-                                          </span>{" "}
-                                          or drag and drop
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {newNews.mediaType === "video"
-                                            ? "MP4, MOV, AVI"
-                                            : "PNG, JPG, GIF"}
-                                        </p>
-                                      </div>
-                                      <Input
-                                        type="file"
-                                        className="hidden"
-                                        accept={
-                                          newNews.mediaType === "video"
-                                            ? "video/*"
-                                            : "image/*"
-                                        }
-                                        onChange={async (e) => {
-                                          const file = e.target.files?.[0];
-                                          if (file) {
-                                            try {
-                                              const url = await uploadFile(file);
-                                              setNewNews((prev) => ({ ...prev, mediaUrl: url }));
-                                            } catch (error) {
-                                              console.error("Upload failed:", error);
-                                              alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                                              const url = URL.createObjectURL(file);
-                                              setNewNews((prev) => ({ ...prev, mediaUrl: url }));
-                                            }
-                                          }
-                                        }}
-                                      />
-                                    </label>
-
-                                    <MediaTile
-                                      media={
-                                        newNews.mediaUrl.trim()
-                                          ? ({
-                                              type: newNews.mediaType,
-                                              url: safeUrl(newNews.mediaUrl),
-                                              alt: newNews.title.trim() || "",
-                                            } as MediaAsset)
-                                          : undefined
-                                      }
-                                      className="aspect-video"
-                                    />
                                   </div>
-                                </div>
-                              </TabsContent>
+                                </TabsContent>
 
-                              <TabsContent value="person" className="mt-3">
-                                <div className="grid gap-3">
-                                  <div>
-                                    <div className="text-sm font-medium mb-1">
-                                      Family
-                                    </div>
-                                    <Select
-                                      value={newPerson.familyId}
-                                      onValueChange={(val) =>
-                                        setNewPerson((prev) => ({
-                                          ...prev,
-                                          familyId: val,
-                                          parentId: "", // Reset parent when family changes
-                                        }))
-                                      }
-                                    >
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select family" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {families.map((f) => (
-                                          <SelectItem key={f._id} value={f._id}>
-                                            {f.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-
-                                  <div>
-                                    <div className="text-sm font-medium mb-1">
-                                      Add as a child of (Optional)
-                                    </div>
-                                    <Select
-                                      value={newPerson.parentId}
-                                      onValueChange={(val) =>
-                                        setNewPerson((prev) => ({
-                                          ...prev,
-                                          parentId: val,
-                                        }))
-                                      }
-                                    >
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Root (No parent)" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="root">
-                                          Root (No parent)
-                                        </SelectItem>
-                                        {addPersonFamilyNodes.map((n) => (
-                                          <SelectItem key={n._id} value={n._id}>
-                                            {n.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      Name
-                                    </div>
-                                    <Input
-                                      value={newPerson.name}
-                                      onChange={(e) =>
-                                        setNewPerson((prev) => ({
-                                          ...prev,
-                                          name: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="e.g., Taylor Lee"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <div className="text-sm font-medium mb-2">
-                                      Person image
-                                    </div>
-                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
-                                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
-                                        <p className="mb-2 text-sm text-muted-foreground">
-                                          <span className="font-semibold">
-                                            Click to upload
-                                          </span>{" "}
-                                          or drag and drop
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                          PNG, JPG, GIF
-                                        </p>
-                                      </div>
-                                      <Input
-                                        type="file"
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={async (e) => {
-                                          const file = e.target.files?.[0];
-                                          if (file) {
-                                            try {
-                                              const url = await uploadFile(file);
-                                              setNewPerson((prev) => ({ ...prev, imageUrl: url }));
-                                            } catch (error) {
-                                              console.error("Upload failed:", error);
-                                              const url = URL.createObjectURL(file);
-                                              setNewPerson((prev) => ({ ...prev, imageUrl: url }));
-                                            }
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <TabsContent value="social" className="mt-3">
+                                  <div className="grid gap-3">
                                     <div>
                                       <div className="text-sm font-medium">
-                                        Birth year
+                                        Name
                                       </div>
                                       <Input
-                                        type="number"
-                                        value={newPerson.birthYear}
+                                        value={newSocial.name}
                                         onChange={(e) =>
-                                          setNewPerson((prev) => ({
+                                          setNewSocial((prev) => ({
                                             ...prev,
-                                            birthYear: e.target.value,
+                                            name: e.target.value,
                                           }))
                                         }
-                                        placeholder="e.g., 1990"
-                                        min="1900"
-                                        max={new Date().getFullYear()}
+                                        placeholder="e.g., Facebook"
                                       />
                                     </div>
-                                  </div>
-
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      Notes
-                                    </div>
-                                    <Textarea
-                                      value={newPerson.note}
-                                      onChange={(e) =>
-                                        setNewPerson((prev) => ({
-                                          ...prev,
-                                          note: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="Optional"
-                                    />
-                                  </div>
-
-                                  <div className="flex items-center gap-3 rounded-lg border p-3">
-                                    <div className="bg-muted size-10 overflow-hidden rounded-full border">
-                                      <img
-                                        src={
-                                          safeUrl(newPerson.imageUrl) ||
-                                          "/placeholder.svg"
-                                        }
-                                        alt={
-                                          newPerson.name.trim() ||
-                                          "New family member"
-                                        }
-                                        className="h-full w-full object-cover"
-                                        loading="lazy"
-                                        onError={(e) => {
-                                          e.currentTarget.src = "/placeholder.svg";
-                                        }}
-                                      />
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="text-muted-foreground text-xs">
-                                        Preview
-                                      </div>
-                                      <div className="truncate text-sm font-medium">
-                                        {newPerson.name.trim() || "Name"}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </TabsContent>
-
-                              <TabsContent value="social" className="mt-3">
-                                <div className="grid gap-3">
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      Name
-                                    </div>
-                                    <Input
-                                      value={newSocial.name}
-                                      onChange={(e) =>
-                                        setNewSocial((prev) => ({
-                                          ...prev,
-                                          name: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="e.g., Facebook"
-                                    />
-                                  </div>
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      URL
-                                    </div>
-                                    <Input
-                                      value={newSocial.url}
-                                      onChange={(e) =>
-                                        setNewSocial((prev) => ({
-                                          ...prev,
-                                          url: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="https://facebook.com/yourpage"
-                                    />
-                                  </div>
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      Icon
-                                    </div>
-                                    <Select
-                                      value={newSocial.icon}
-                                      onValueChange={(v) =>
-                                        setNewSocial((prev) => ({
-                                          ...prev,
-                                          icon: v,
-                                        }))
-                                      }
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Choose icon" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="facebook">Facebook</SelectItem>
-                                        <SelectItem value="twitter">Twitter</SelectItem>
-                                        <SelectItem value="instagram">Instagram</SelectItem>
-                                        <SelectItem value="linkedin">LinkedIn</SelectItem>
-                                        <SelectItem value="youtube">YouTube</SelectItem>
-                                        <SelectItem value="github">GitHub</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                </div>
-                              </TabsContent>
-
-                              <TabsContent value="family" className="mt-3">
-                                <div className="grid gap-3">
-                                  <div>
-                                    <div className="text-sm font-medium">Family Name</div>
-                                    <Input
-                                      value={newFamily.name}
-                                      onChange={(e) =>
-                                        setNewFamily((prev) => ({
-                                          ...prev,
-                                          name: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="e.g. The Smiths"
-                                    />
-                                  </div>
-                                  <div>
-                                    <div className="text-sm font-medium mb-2">Family Image</div>
-                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
-                                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
-                                        <p className="mb-2 text-sm text-muted-foreground">
-                                          <span className="font-semibold">Click to upload</span> or
-                                          drag and drop
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                          PNG, JPG, GIF
-                                        </p>
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        URL
                                       </div>
                                       <Input
-                                        type="file"
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={async (e) => {
-                                          const file = e.target.files?.[0];
-                                          if (file) {
-                                            try {
-                                              const url = await uploadFile(file);
-                                              setNewFamily((prev) => ({ ...prev, imageUrl: url }));
-                                            } catch (error) {
-                                              console.error("Upload failed:", error);
-                                              const url = URL.createObjectURL(file);
-                                              setNewFamily((prev) => ({ ...prev, imageUrl: url }));
-                                            }
-                                          }
-                                        }}
+                                        value={newSocial.url}
+                                        onChange={(e) =>
+                                          setNewSocial((prev) => ({
+                                            ...prev,
+                                            url: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="https://facebook.com/yourpage"
                                       />
-                                    </label>
-                                    <SafeMediaPreview
-                                      url={newFamily.imageUrl}
-                                      type="image"
-                                      alt={newFamily.name}
-                                      className="aspect-video mt-2"
-                                    />
+                                    </div>
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        Icon
+                                      </div>
+                                      <Select
+                                        value={newSocial.icon}
+                                        onValueChange={(v) =>
+                                          setNewSocial((prev) => ({
+                                            ...prev,
+                                            icon: v,
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Choose icon" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="facebook">Facebook</SelectItem>
+                                          <SelectItem value="twitter">Twitter</SelectItem>
+                                          <SelectItem value="instagram">Instagram</SelectItem>
+                                          <SelectItem value="linkedin">LinkedIn</SelectItem>
+                                          <SelectItem value="youtube">YouTube</SelectItem>
+                                          <SelectItem value="github">GitHub</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
                                   </div>
-                                </div>
-                              </TabsContent>
-                            </Tabs>
+                                </TabsContent>
 
-                            <DialogFooter>
+                                <TabsContent value="family" className="mt-3">
+                                  <div className="grid gap-3">
+                                    <div>
+                                      <div className="text-sm font-medium">Family Name</div>
+                                      <Input
+                                        value={newFamily.name}
+                                        onChange={(e) =>
+                                          setNewFamily((prev) => ({
+                                            ...prev,
+                                            name: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="e.g. The Smiths"
+                                      />
+                                    </div>
+                                    <div>
+                                      <div className="text-sm font-medium mb-2">Family Image</div>
+                                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                          <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
+                                          <p className="mb-2 text-sm text-muted-foreground">
+                                            <span className="font-semibold">Click to upload</span> or
+                                            drag and drop
+                                          </p>
+                                          <p className="text-xs text-muted-foreground">
+                                            PNG, JPG, GIF
+                                          </p>
+                                        </div>
+                                        <Input
+                                          type="file"
+                                          className="hidden"
+                                          accept="image/*"
+                                          onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                              try {
+                                                const url = await uploadFile(file);
+                                                setNewFamily((prev) => ({ ...prev, imageUrl: url }));
+                                              } catch (error) {
+                                                console.error("Upload failed:", error);
+                                                const url = URL.createObjectURL(file);
+                                                setNewFamily((prev) => ({ ...prev, imageUrl: url }));
+                                              }
+                                            }
+                                          }}
+                                        />
+                                      </label>
+                                      <SafeMediaPreview
+                                        url={newFamily.imageUrl}
+                                        type="image"
+                                        alt={newFamily.name}
+                                        className="aspect-video mt-2"
+                                      />
+                                    </div>
+                                  </div>
+                                </TabsContent>
+                              </Tabs>
+                            </div>
+                            <DialogFooter className="p-6 bg-muted/30 flex flex-row items-center justify-end gap-2">
                               <Button
                                 type="button"
                                 variant="secondary"
@@ -3056,6 +3227,8 @@ export default function FamilyHubPage() {
                                     imageUrl: "",
                                     familyId: "",
                                     parentId: "",
+                                    fatherId: "",
+                                    motherId: "",
                                   });
                                   setNewSocial({
                                     name: "",
@@ -3109,13 +3282,13 @@ export default function FamilyHubPage() {
                                       tags: newNews.tags,
                                       media: mediaUrl
                                         ? ({
-                                            type: newNews.mediaType,
-                                            url: mediaUrl,
-                                            alt:
-                                              newNews.mediaType === "image"
-                                                ? newNews.title.trim()
-                                                : undefined,
-                                          } as MediaAsset)
+                                          type: newNews.mediaType,
+                                          url: mediaUrl,
+                                          alt:
+                                            newNews.mediaType === "image"
+                                              ? newNews.title.trim()
+                                              : undefined,
+                                        } as MediaAsset)
                                         : undefined,
                                     });
                                     setNewNews({
@@ -3137,8 +3310,8 @@ export default function FamilyHubPage() {
                                       10
                                     );
 
-                                    const parentIdStr = newPerson.parentId && newPerson.parentId !== "root" 
-                                      ? newPerson.parentId 
+                                    const parentIdStr = newPerson.parentId && newPerson.parentId !== "root"
+                                      ? newPerson.parentId
                                       : undefined;
 
                                     const newNodeId = await addFamilyMember({
@@ -3151,16 +3324,23 @@ export default function FamilyHubPage() {
                                         ? birthYear
                                         : undefined,
                                       note: newPerson.note.trim() || undefined,
-                                      parentId: parentIdStr as Id<"familyNodes"> | undefined,
+                                      fatherId: (newPerson.fatherId as Id<"familyNodes">) || undefined,
+                                      motherId: (newPerson.motherId as Id<"familyNodes">) || undefined,
                                     });
 
-                                    if (parentIdStr) {
+                                    if (newPerson.fatherId) {
                                       setExpanded((prev) => ({
                                         ...prev,
-                                        [parentIdStr]: true,
+                                        [newPerson.fatherId]: true,
                                       }));
                                     }
-                                    
+                                    if (newPerson.motherId) {
+                                      setExpanded((prev) => ({
+                                        ...prev,
+                                        [newPerson.motherId]: true,
+                                      }));
+                                    }
+
                                     setSelectedFamilyId(newPerson.familyId as Id<"families">);
                                     setSelectedPersonId(newNodeId);
                                     setTab("tree");
@@ -3170,8 +3350,10 @@ export default function FamilyHubPage() {
                                       birthYear: "",
                                       note: "",
                                       imageUrl: "",
-                                      familyId: "",
+                                      familyId: selectedFamilyId || "",
                                       parentId: "",
+                                      fatherId: "",
+                                      motherId: "",
                                     });
 
                                     return;
@@ -3201,13 +3383,13 @@ export default function FamilyHubPage() {
                                     notes: newEvent.notes.trim() || undefined,
                                     media: mediaUrl
                                       ? ({
-                                          type: newEvent.mediaType,
-                                          url: mediaUrl,
-                                          alt:
-                                            newEvent.mediaType === "image"
-                                              ? newEvent.title.trim()
-                                              : undefined,
-                                        } as MediaAsset)
+                                        type: newEvent.mediaType,
+                                        url: mediaUrl,
+                                        alt:
+                                          newEvent.mediaType === "image"
+                                            ? newEvent.title.trim()
+                                            : undefined,
+                                      } as MediaAsset)
                                       : undefined,
                                   });
                                   setNewEvent({
@@ -3225,23 +3407,24 @@ export default function FamilyHubPage() {
                                 Add
                               </Button>
                             </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              logout();
-              navigate("/");
-            }}
-            className="h-9 px-3 rounded-lg flex-1 md:flex-none"
-          >
-            <LogOut className="size-4 mr-2" />
-            <span className="hidden sm:inline">Logout</span>
-            <span className="sm:hidden">Exit</span>
-          </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          logout();
+                          navigate("/");
+                        }}
+                        className="h-9 px-3 rounded-lg flex-1 md:flex-none"
+                      >
+                        <LogOut className="size-4 mr-2" />
+                        <span className="hidden sm:inline">Logout</span>
+                        <span className="sm:hidden">Exit</span>
+                      </Button>
                     </div>
                     {/* Theme toggle for admin on sm screens */}
                     <div className="md:hidden">
@@ -3607,11 +3790,10 @@ export default function FamilyHubPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                                    c.reactions?.like > 0
-                                      ? "text-blue-500 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40"
-                                      : "hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                                  }`}
+                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${c.reactions?.like > 0
+                                    ? "text-blue-500 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                                    : "hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                                    }`}
                                   onClick={(e) => {
                                     const button = e.currentTarget;
                                     button.classList.add("animate-bounce");
@@ -3634,11 +3816,10 @@ export default function FamilyHubPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                                    c.reactions?.smile > 0
-                                      ? "text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
-                                      : "hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950/30"
-                                  }`}
+                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${c.reactions?.smile > 0
+                                    ? "text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
+                                    : "hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950/30"
+                                    }`}
                                   onClick={(e) => {
                                     const button = e.currentTarget;
                                     button.classList.add("animate-bounce");
@@ -3661,11 +3842,10 @@ export default function FamilyHubPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                                    c.reactions?.heart > 0
-                                      ? "text-red-500 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40"
-                                      : "hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                  }`}
+                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${c.reactions?.heart > 0
+                                    ? "text-red-500 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40"
+                                    : "hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                    }`}
                                   onClick={(e) => {
                                     const button = e.currentTarget;
                                     button.classList.add("animate-bounce");
@@ -3688,11 +3868,10 @@ export default function FamilyHubPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                                    c.reactions?.celebrate > 0
-                                      ? "text-purple-500 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40"
-                                      : "hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-                                  }`}
+                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${c.reactions?.celebrate > 0
+                                    ? "text-purple-500 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40"
+                                    : "hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                                    }`}
                                   onClick={(e) => {
                                     const button = e.currentTarget;
                                     button.classList.add("animate-bounce");
@@ -3758,31 +3937,31 @@ export default function FamilyHubPage() {
                             </div>
                             {replyingTo[`event:${selectedEvent._id}`]
                               ?.commentId === c._id && (
-                              <div className="ml-4 mt-2 relative">
-                                <div className="absolute -left-2 top-0 bottom-0 w-0.5 bg-border"></div>
-                                <div className="absolute -left-2 top-3 w-3 h-0.5 bg-border"></div>
-                                <div className="bg-muted/30 border border-dashed rounded-md p-3">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                                      <MessageCircle className="size-3 text-primary" />
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">
-                                      Replying to{" "}
-                                      <span className="font-medium text-foreground">
-                                        {c.author}
+                                <div className="ml-4 mt-2 relative">
+                                  <div className="absolute -left-2 top-0 bottom-0 w-0.5 bg-border"></div>
+                                  <div className="absolute -left-2 top-3 w-3 h-0.5 bg-border"></div>
+                                  <div className="bg-muted/30 border border-dashed rounded-md p-3">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <MessageCircle className="size-3 text-primary" />
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        Replying to{" "}
+                                        <span className="font-medium text-foreground">
+                                          {c.author}
+                                        </span>
                                       </span>
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground bg-background/50 rounded px-2 py-1 border">
-                                    "
-                                    {c.text.length > 50
-                                      ? c.text.substring(0, 50) + "..."
-                                      : c.text}
-                                    "
+                                    </div>
+                                    <div className="text-xs text-muted-foreground bg-background/50 rounded px-2 py-1 border">
+                                      "
+                                      {c.text.length > 50
+                                        ? c.text.substring(0, 50) + "..."
+                                        : c.text}
+                                      "
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
                           </div>
                         ))}
                         {selectedEventComments.length === 0 && (
@@ -4121,11 +4300,10 @@ export default function FamilyHubPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                                    c.reactions?.like > 0
-                                      ? "text-blue-500 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40"
-                                      : "hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                                  }`}
+                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${c.reactions?.like > 0
+                                    ? "text-blue-500 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                                    : "hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                                    }`}
                                   onClick={(e) => {
                                     const button = e.currentTarget;
                                     button.classList.add("animate-bounce");
@@ -4148,11 +4326,10 @@ export default function FamilyHubPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                                    c.reactions?.smile > 0
-                                      ? "text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
-                                      : "hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950/30"
-                                  }`}
+                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${c.reactions?.smile > 0
+                                    ? "text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
+                                    : "hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950/30"
+                                    }`}
                                   onClick={(e) => {
                                     const button = e.currentTarget;
                                     button.classList.add("animate-bounce");
@@ -4175,11 +4352,10 @@ export default function FamilyHubPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                                    c.reactions?.heart > 0
-                                      ? "text-red-500 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40"
-                                      : "hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                  }`}
+                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${c.reactions?.heart > 0
+                                    ? "text-red-500 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40"
+                                    : "hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                    }`}
                                   onClick={(e) => {
                                     const button = e.currentTarget;
                                     button.classList.add("animate-bounce");
@@ -4202,11 +4378,10 @@ export default function FamilyHubPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                                    c.reactions?.celebrate > 0
-                                      ? "text-purple-500 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40"
-                                      : "hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-                                  }`}
+                                  className={`h-6 px-1 text-xs min-w-0 relative overflow-hidden transition-all duration-200 active:scale-95 ${c.reactions?.celebrate > 0
+                                    ? "text-purple-500 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40"
+                                    : "hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                                    }`}
                                   onClick={(e) => {
                                     const button = e.currentTarget;
                                     button.classList.add("animate-bounce");
@@ -4272,31 +4447,31 @@ export default function FamilyHubPage() {
                             </div>
                             {replyingTo[`news:${selectedNews._id}`]
                               ?.commentId === c._id && (
-                              <div className="ml-4 mt-2 relative">
-                                <div className="absolute -left-2 top-0 bottom-0 w-0.5 bg-border"></div>
-                                <div className="absolute -left-2 top-3 w-3 h-0.5 bg-border"></div>
-                                <div className="bg-muted/30 border border-dashed rounded-md p-3">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                                      <MessageCircle className="size-3 text-primary" />
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">
-                                      Replying to{" "}
-                                      <span className="font-medium text-foreground">
-                                        {c.author}
+                                <div className="ml-4 mt-2 relative">
+                                  <div className="absolute -left-2 top-0 bottom-0 w-0.5 bg-border"></div>
+                                  <div className="absolute -left-2 top-3 w-3 h-0.5 bg-border"></div>
+                                  <div className="bg-muted/30 border border-dashed rounded-md p-3">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <MessageCircle className="size-3 text-primary" />
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        Replying to{" "}
+                                        <span className="font-medium text-foreground">
+                                          {c.author}
+                                        </span>
                                       </span>
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground bg-background/50 rounded px-2 py-1 border">
-                                    "
-                                    {c.text.length > 50
-                                      ? c.text.substring(0, 50) + "..."
-                                      : c.text}
-                                    "
+                                    </div>
+                                    <div className="text-xs text-muted-foreground bg-background/50 rounded px-2 py-1 border">
+                                      "
+                                      {c.text.length > 50
+                                        ? c.text.substring(0, 50) + "..."
+                                        : c.text}
+                                      "
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
                           </div>
                         ))}
                         {selectedNewsComments.length === 0 && (
@@ -4456,28 +4631,30 @@ export default function FamilyHubPage() {
                         </div>
                         {isAdmin && (
                           <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingPerson(selectedPerson.id);
-                                  const node = familyNodes.find(
-                                    (n) => n._id === selectedPerson.id
-                                  );
-                                  if (node) {
-                                    setNewPerson({
-                                      name: node.name,
-                                      birthYear: node.birthYear?.toString() || "",
-                                      note: node.note || "",
-                                      imageUrl: node.imageUrl || "",
-                                      familyId: node.familyId,
-                                      parentId: node.parentId || "",
-                                    });
-                                  }
-                                }}
-                              >
-                                <Edit className="size-4" />
-                              </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingPerson(selectedPerson.id);
+                                const node = familyNodes.find(
+                                  (n) => n._id === selectedPerson.id
+                                );
+                                if (node) {
+                                  setNewPerson({
+                                    name: node.name,
+                                    birthYear: node.birthYear?.toString() || "",
+                                    note: node.note || "",
+                                    imageUrl: node.imageUrl || "",
+                                    familyId: node.familyId,
+                                    parentId: node.parentId || "",
+                                    fatherId: node.fatherId || "",
+                                    motherId: node.motherId || "",
+                                  });
+                                }
+                              }}
+                            >
+                              <Edit className="size-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -4522,7 +4699,7 @@ export default function FamilyHubPage() {
                             Children
                           </div>
                           <div className="mt-1 text-sm font-medium">
-                            {familyNodes.filter(node => node.parentId === selectedPerson.id).length}
+                            {familyNodes.filter(node => node.parentId === selectedPerson.id || node.fatherId === selectedPerson.id || node.motherId === selectedPerson.id).length}
                           </div>
                         </div>
                       </div>

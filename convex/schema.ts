@@ -74,7 +74,12 @@ export default defineSchema({
     birthYear: v.optional(v.number()),
     note: v.optional(v.string()),
     parentId: v.optional(v.id("familyNodes")),
-  }).index("by_family", ["familyId"]).index("by_parent", ["parentId"]),
+    fatherId: v.optional(v.id("familyNodes")),
+    motherId: v.optional(v.id("familyNodes")),
+  }).index("by_family", ["familyId"])
+    .index("by_parent", ["parentId"])
+    .index("by_father", ["fatherId"])
+    .index("by_mother", ["motherId"]),
 
   socialLinks: defineTable({
     name: v.string(),

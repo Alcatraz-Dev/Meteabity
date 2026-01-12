@@ -35,6 +35,8 @@ export const addFamilyMember = mutation({
     birthYear: v.optional(v.number()),
     note: v.optional(v.string()),
     parentId: v.optional(v.id("familyNodes")),
+    fatherId: v.optional(v.id("familyNodes")),
+    motherId: v.optional(v.id("familyNodes")),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("familyNodes", args);
@@ -48,6 +50,9 @@ export const updateFamilyMember = mutation({
     imageUrl: v.optional(v.string()),
     birthYear: v.optional(v.number()),
     note: v.optional(v.string()),
+    fatherId: v.optional(v.id("familyNodes")),
+    motherId: v.optional(v.id("familyNodes")),
+    parentId: v.optional(v.id("familyNodes")),
   },
   handler: async (ctx, args) => {
     const { id, ...updateData } = args;
