@@ -517,14 +517,16 @@ function MediaTile({
     );
   }
 
+  const Component = clickable ? "button" : "div";
+
   if (media.type === "video") {
     return (
-      <button
-        type="button"
+      <Component
+        type={clickable ? "button" : undefined}
         onClick={onClick}
-        disabled={!clickable}
+        disabled={clickable ? undefined : undefined}
         className={
-          "group relative overflow-hidden rounded-md border text-left " +
+          "group relative overflow-hidden rounded-md border text-left block " +
           (clickable
             ? "hover:bg-accent/30 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
             : "") +
@@ -534,7 +536,7 @@ function MediaTile({
       >
         <video
           className={
-            "h-full w-full object-cover " +
+            "absolute inset-0 w-full h-full object-cover " +
             (clickable ? "transition-transform group-hover:scale-[1.01]" : "")
           }
           src={media.url}
@@ -552,25 +554,25 @@ function MediaTile({
           }}
         />
         {clickable ? (
-          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 to-transparent z-10" />
         ) : null}
         {clickable ? (
-          <div className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-xs text-white">
+          <div className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-xs text-white z-20">
             <Clapperboard className="size-3.5" />
             Play
           </div>
         ) : null}
-      </button>
+      </Component>
     );
   }
 
   return (
-    <button
-      type="button"
+    <Component
+      type={clickable ? "button" : undefined}
       onClick={onClick}
-      disabled={!clickable}
+      disabled={clickable ? undefined : undefined}
       className={
-        "group relative overflow-hidden rounded-md border text-left " +
+        "group relative overflow-hidden rounded-md border text-left block " +
         (clickable
           ? "hover:bg-accent/30 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
           : "") +
@@ -582,7 +584,7 @@ function MediaTile({
         src={media.url}
         alt={media.alt ?? ""}
         className={
-          "h-full w-full object-cover " +
+          "absolute inset-0 w-full h-full object-cover " +
           (clickable ? "transition-transform group-hover:scale-[1.01]" : "")
         }
         loading="lazy"
@@ -591,9 +593,9 @@ function MediaTile({
         }}
       />
       {clickable ? (
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/25 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/25 to-transparent z-10" />
       ) : null}
-    </button>
+    </Component>
   );
 }
 
