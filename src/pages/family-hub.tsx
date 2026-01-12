@@ -3901,7 +3901,11 @@ export default function FamilyHubPage() {
           </TabsContent>
         </Tabs>
       </div>
-      <Footer />
+      {tab !== "tree" && (
+        <div className="pb-4">
+          <Footer />
+        </div>
+      )}
     </div>
   );
 }

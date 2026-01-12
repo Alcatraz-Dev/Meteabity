@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 export const getSocialLinks = query({
   handler: async (ctx) => {
-    return await ctx.db.query("socialLinks").order("desc").collect();
+    return await ctx.db.query("socialLinks").collect();
   },
 });
 
