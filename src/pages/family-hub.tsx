@@ -2781,7 +2781,7 @@ export default function FamilyHubPage() {
                               <div className="grid gap-2">
                                 <MediaTile
                                   media={e.media}
-                                  className="aspect-video"
+                                  className="aspect-video sm:aspect-none sm:h-24"
                                 />
                                 <div className="min-w-0">
                                   <div className="truncate font-medium text-sm">
@@ -3255,7 +3255,7 @@ export default function FamilyHubPage() {
                               <div className="grid gap-2">
                                 <MediaTile
                                   media={n.media}
-                                  className="aspect-video"
+                                  className="aspect-video sm:aspect-none sm:h-24"
                                 />
                                 <div className="min-w-0">
                                   <div className="truncate font-medium text-sm">
