@@ -926,20 +926,37 @@ export default function FamilyHubPage() {
   const deleteFamily = useMutation(api.families.deleteFamily);
   const addFamilyMember = useMutation(api.families.addFamilyMember);
 
-  const [newEvent, setNewEvent] = React.useState({
+  const [newEvent, setNewEvent] = React.useState<{
+    title: string;
+    dateISO: string;
+    location: string;
+    kind: FamilyEvent["kind"];
+    notes: string;
+    mediaType: MediaAsset["type"];
+    mediaUrl: string;
+  }>({
     title: "",
     dateISO: "",
     location: "",
+    kind: "Other",
     notes: "",
-    mediaType: "image" as MediaAsset["type"],
+    mediaType: "image",
     mediaUrl: "",
   });
 
-  const [newNews, setNewNews] = React.useState({
+  const [newNews, setNewNews] = React.useState<{
+    title: string;
+    dateISO: string;
+    summary: string;
+    tags: FamilyNews["tags"];
+    mediaType: MediaAsset["type"];
+    mediaUrl: string;
+  }>({
     title: "",
     dateISO: "",
     summary: "",
-    mediaType: "image" as MediaAsset["type"],
+    tags: ["Update"],
+    mediaType: "image",
     mediaUrl: "",
   });
 
@@ -1729,20 +1746,42 @@ export default function FamilyHubPage() {
                   placeholder="e.g., Cousins brunch"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <div className="text-sm font-medium">Date</div>
-                  <SimpleDatePicker
-                    value={newEvent.dateISO}
-                    onChange={(value) =>
-                      setNewEvent((prev) => ({
-                        ...prev,
-                        dateISO: value,
-                      }))
-                    }
-                    placeholder="Select event date"
-                  />
-                </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div>
+                      <div className="text-sm font-medium">Type</div>
+                      <Select
+                        value={newEvent.kind}
+                        onValueChange={(v) =>
+                          setNewEvent((prev) => ({
+                            ...prev,
+                            kind: v as FamilyEvent["kind"],
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Birthday">Birthday</SelectItem>
+                          <SelectItem value="Reunion">Reunion</SelectItem>
+                          <SelectItem value="Holiday">Holiday</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Date</div>
+                      <SimpleDatePicker
+                        value={newEvent.dateISO}
+                        onChange={(value) =>
+                          setNewEvent((prev) => ({
+                            ...prev,
+                            dateISO: value,
+                          }))
+                        }
+                        placeholder="Select event date"
+                      />
+                    </div>
                 <div>
                   <div className="text-sm font-medium">Location</div>
                   <Input
@@ -1860,7 +1899,7 @@ export default function FamilyHubPage() {
                     title: newEvent.title.trim(),
                     dateISO: newEvent.dateISO,
                     location: newEvent.location.trim() || undefined,
-                    kind: "Other",
+                    kind: newEvent.kind,
                     notes: newEvent.notes.trim() || undefined,
                     media: mediaUrl
                       ? ({
@@ -1930,6 +1969,30 @@ export default function FamilyHubPage() {
                   }
                   placeholder="What's new?"
                 />
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-2">Tags</div>
+                <div className="flex flex-wrap gap-2">
+                  {["Update", "Milestone", "Reminder"].map((t) => (
+                    <Badge
+                      key={t}
+                      variant={newNews.tags.includes(t as any) ? tagVariant(t as any) : "outline"}
+                      className="cursor-pointer transition-all active:scale-95"
+                      onClick={() => {
+                        const tags = [...newNews.tags];
+                        if (tags.includes(t as any)) {
+                          if (tags.length > 1) {
+                            setNewNews(prev => ({ ...prev, tags: tags.filter(x => x !== t) as any }));
+                          }
+                        } else {
+                          setNewNews(prev => ({ ...prev, tags: [...tags, t] as any }));
+                        }
+                      }}
+                    >
+                      {t}
+                    </Badge>
+                  ))}
+                </div>
               </div>
               <Separator />
               <div className="grid gap-3">
@@ -2020,7 +2083,7 @@ export default function FamilyHubPage() {
                     title: newNews.title.trim(),
                     dateISO: newNews.dateISO,
                     summary: newNews.summary.trim(),
-                    tags: ["Update"],
+                    tags: newNews.tags,
                     media: mediaUrl
                       ? ({
                           type: newNews.mediaType,
@@ -2352,7 +2415,39 @@ export default function FamilyHubPage() {
                                     />
                                   </div>
 
-                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        Type
+                                      </div>
+                                      <Select
+                                        value={newEvent.kind}
+                                        onValueChange={(v) =>
+                                          setNewEvent((prev) => ({
+                                            ...prev,
+                                            kind: v as FamilyEvent["kind"],
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="Birthday">
+                                            Birthday
+                                          </SelectItem>
+                                          <SelectItem value="Reunion">
+                                            Reunion
+                                          </SelectItem>
+                                          <SelectItem value="Holiday">
+                                            Holiday
+                                          </SelectItem>
+                                          <SelectItem value="Other">
+                                            Other
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
                                     <div>
                                       <div className="text-sm font-medium">
                                         Date
@@ -2497,6 +2592,47 @@ export default function FamilyHubPage() {
                                       }
                                       placeholder="What’s new?"
                                     />
+                                  </div>
+
+                                  <div>
+                                    <div className="text-sm font-medium mb-2">
+                                      Tags
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {["Update", "Milestone", "Reminder"].map(
+                                        (t) => (
+                                          <Badge
+                                            key={t}
+                                            variant={
+                                              newNews.tags.includes(t as any)
+                                                ? tagVariant(t as any)
+                                                : "outline"
+                                            }
+                                            className="cursor-pointer transition-all active:scale-95 px-2 py-0.5"
+                                            onClick={() => {
+                                              const tags = [...newNews.tags];
+                                              if (tags.includes(t as any)) {
+                                                if (tags.length > 1) {
+                                                  setNewNews((prev) => ({
+                                                    ...prev,
+                                                    tags: tags.filter(
+                                                      (x) => x !== t
+                                                    ) as any,
+                                                  }));
+                                                }
+                                              } else {
+                                                setNewNews((prev) => ({
+                                                  ...prev,
+                                                  tags: [...tags, t] as any,
+                                                }));
+                                              }
+                                            }}
+                                          >
+                                            {t}
+                                          </Badge>
+                                        )
+                                      )}
+                                    </div>
                                   </div>
 
                                   <Separator />
@@ -2900,6 +3036,7 @@ export default function FamilyHubPage() {
                                     title: "",
                                     dateISO: "",
                                     location: "",
+                                    kind: "Other",
                                     notes: "",
                                     mediaType: "image",
                                     mediaUrl: "",
@@ -2908,6 +3045,7 @@ export default function FamilyHubPage() {
                                     title: "",
                                     dateISO: "",
                                     summary: "",
+                                    tags: ["Update"],
                                     mediaType: "image",
                                     mediaUrl: "",
                                   });
@@ -2968,7 +3106,7 @@ export default function FamilyHubPage() {
                                       title: newNews.title.trim(),
                                       dateISO: newNews.dateISO,
                                       summary: newNews.summary.trim(),
-                                      tags: ["Update"],
+                                      tags: newNews.tags,
                                       media: mediaUrl
                                         ? ({
                                             type: newNews.mediaType,
@@ -2984,6 +3122,7 @@ export default function FamilyHubPage() {
                                       title: "",
                                       dateISO: "",
                                       summary: "",
+                                      tags: ["Update"],
                                       mediaType: "image",
                                       mediaUrl: "",
                                     });
@@ -3058,7 +3197,7 @@ export default function FamilyHubPage() {
                                     dateISO: newEvent.dateISO,
                                     location:
                                       newEvent.location.trim() || undefined,
-                                    kind: "Other",
+                                    kind: newEvent.kind,
                                     notes: newEvent.notes.trim() || undefined,
                                     media: mediaUrl
                                       ? ({
@@ -3075,6 +3214,7 @@ export default function FamilyHubPage() {
                                     title: "",
                                     dateISO: "",
                                     location: "",
+                                    kind: "Other",
                                     notes: "",
                                     mediaType: "image",
                                     mediaUrl: "",
@@ -3226,6 +3366,7 @@ export default function FamilyHubPage() {
                                     title: selectedEvent.title,
                                     dateISO: selectedEvent.dateISO,
                                     location: selectedEvent.location || "",
+                                    kind: selectedEvent.kind,
                                     notes: selectedEvent.notes || "",
                                     mediaType:
                                       selectedEvent.media?.type || "image",
@@ -3747,6 +3888,7 @@ export default function FamilyHubPage() {
                                     title: selectedNews.title,
                                     dateISO: selectedNews.dateISO,
                                     summary: selectedNews.summary,
+                                    tags: selectedNews.tags,
                                     mediaType:
                                       selectedNews.media?.type || "image",
                                     mediaUrl: selectedNews.media?.url || "",
