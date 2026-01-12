@@ -1550,7 +1550,7 @@ export default function FamilyHubPage() {
           open={editingEvent !== null}
           onOpenChange={(open) => !open && setEditingEvent(null)}
         >
-          <DialogContent>
+          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Event</DialogTitle>
               <DialogDescription>Update event information.</DialogDescription>
@@ -1726,7 +1726,7 @@ export default function FamilyHubPage() {
           open={editingNews !== null}
           onOpenChange={(open) => !open && setEditingNews(null)}
         >
-          <DialogContent>
+          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit News</DialogTitle>
               <DialogDescription>Update news information.</DialogDescription>
@@ -1885,7 +1885,7 @@ export default function FamilyHubPage() {
           open={editingPerson !== null}
           onOpenChange={(open) => !open && setEditingPerson(null)}
         >
-          <DialogContent>
+          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Family Member</DialogTitle>
               <DialogDescription>
@@ -2062,7 +2062,7 @@ export default function FamilyHubPage() {
                             <span className="sm:hidden">Add</span>
                           </Button>
                         </DialogTrigger>
-                          <DialogContent>
+                        <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>Add to family hub</DialogTitle>
                               <DialogDescription>
