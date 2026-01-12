@@ -2172,7 +2172,7 @@ export default function FamilyHubPage() {
                           <Button
                             type="button"
                             size="sm"
-                            className="h-9 px-3 sm:h-10 sm:px-4 rounded-lg flex-1 md:flex-none"
+                            className="h-9 px-3 rounded-lg flex-1 md:flex-none"
                           >
                             <Plus className="size-5 mr-2" />
                             <span className="hidden sm:inline">Add Content</span>
@@ -2826,20 +2826,21 @@ export default function FamilyHubPage() {
                             </DialogFooter>
                           </DialogContent>
                         </Dialog>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            logout();
-                            navigate("/");
-                          }}
-                          className="h-9 px-3 sm:h-10 sm:px-4 rounded-lg flex-1 md:flex-none"
-                        >
-                          <LogOut className="size-5 mr-2" />
-                          <span className="hidden sm:inline">Logout</span>
-                          <span className="sm:hidden">Exit</span>
-                        </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              logout();
+              navigate("/");
+            }}
+            className="h-9 px-3 rounded-lg flex-1 md:flex-none"
+          >
+            <LogOut className="size-4 mr-2" />
+            <span className="hidden sm:inline">Logout</span>
+            <span className="sm:hidden">Exit</span>
+          </Button>
                     </div>
                     {/* Theme toggle for admin on sm screens */}
                     <div className="md:hidden">
