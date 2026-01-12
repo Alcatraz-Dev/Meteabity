@@ -2775,13 +2775,13 @@ export default function FamilyHubPage() {
                           {events.map((e) => (
                             <div
                               key={e._id}
-                              className="rounded-lg border p-3 transition-colors hover:bg-accent/30 cursor-pointer whitespace-nowrap flex-shrink-0 lg:whitespace-normal lg:flex-shrink w-48 lg:w-auto"
+                              className="rounded-lg border p-3 transition-colors hover:bg-accent/30 cursor-pointer whitespace-nowrap flex-shrink-0 lg:whitespace-normal lg:flex-shrink w-48 lg:w-full"
                               onClick={() => setSelectedEventId(e._id)}
                             >
                               <div className="grid gap-2">
                                 <MediaTile
                                   media={e.media}
-                                  className="aspect-video sm:aspect-none sm:h-24"
+                                  className="aspect-video w-full"
                                 />
                                 <div className="min-w-0">
                                   <div className="truncate font-medium text-sm">
@@ -3249,13 +3249,13 @@ export default function FamilyHubPage() {
                           {news.map((n) => (
                             <div
                               key={n._id}
-                              className="rounded-lg border p-3 transition-colors hover:bg-accent/30 cursor-pointer whitespace-nowrap flex-shrink-0 lg:whitespace-normal lg:flex-shrink w-48 lg:w-auto"
+                              className="rounded-lg border p-3 transition-colors hover:bg-accent/30 cursor-pointer whitespace-nowrap flex-shrink-0 lg:whitespace-normal lg:flex-shrink w-48 lg:w-full"
                               onClick={() => setSelectedNewsId(n._id)}
                             >
                               <div className="grid gap-2">
                                 <MediaTile
                                   media={n.media}
-                                  className="aspect-video sm:aspect-none sm:h-24"
+                                  className="aspect-video w-full"
                                 />
                                 <div className="min-w-0">
                                   <div className="truncate font-medium text-sm">

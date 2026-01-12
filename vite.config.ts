@@ -17,7 +17,23 @@ export default defineConfig({
   
   },
   build: {
-    minify: false, // false for readable stack traces
+    minify: false,
+    target: ["es2020", "safari14"], // Safari & Chrome JS compatibility
+    cssTarget: ["safari14"],        // Fix flex/grid/backdrop-filter issues
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,   // Fix Safari chunk loading issues
+      },
+    },
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: "es2020",
+    },
+  },
+  esbuild: {
+    legalComments: "none",
   },
 });
 
