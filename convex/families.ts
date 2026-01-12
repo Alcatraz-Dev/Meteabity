@@ -63,3 +63,26 @@ export const deleteFamilyMember = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+export const updateFamily = mutation({
+  args: {
+    id: v.id("families"),
+    name: v.string(),
+    imageUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...updateData } = args;
+    return await ctx.db.patch(id, updateData);
+  },
+});
+
+export const deleteFamily = mutation({
+  args: {
+    id: v.id("families"),
+  },
+  handler: async (ctx, args) => {
+    // Note: This does not delete associated family nodes or events.
+    // In a real app, you'd want to cascade delete or prevent deletion if children exist.
+    await ctx.db.delete(args.id);
+  },
+});

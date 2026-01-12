@@ -884,7 +884,7 @@ export default function FamilyHubPage() {
   const navigate = useNavigate();
   const { uploadFile } = useFileUpload();
   const [tab, setTab] = React.useState<"events" | "news" | "tree">("events");
-  const [addMode, setAddMode] = React.useState<"event" | "news" | "person" | "social">(
+  const [addMode, setAddMode] = React.useState<"event" | "news" | "person" | "social" | "family">(
     "event"
   );
   const [editingEvent, setEditingEvent] = React.useState<Id<"events"> | null>(
@@ -892,6 +892,9 @@ export default function FamilyHubPage() {
   );
   const [editingNews, setEditingNews] = React.useState<Id<"news"> | null>(null);
   const [editingPerson, setEditingPerson] = React.useState<string | null>(null);
+  const [editingFamily, setEditingFamily] = React.useState<Id<"families"> | null>(
+    null
+  );
   const [query, setQuery] = React.useState("");
 
   // Convex queries
@@ -917,6 +920,10 @@ export default function FamilyHubPage() {
   const deleteFamilyMember = useMutation(api.families.deleteFamilyMember);
   const createSocialLink = useMutation(api.socialLinks.createSocialLink);
   const deleteSocialLink = useMutation(api.socialLinks.deleteSocialLink);
+  
+  const createFamily = useMutation(api.families.createFamily);
+  const updateFamily = useMutation(api.families.updateFamily);
+  const deleteFamily = useMutation(api.families.deleteFamily);
 
   const [newEvent, setNewEvent] = React.useState({
     title: "",
@@ -946,6 +953,11 @@ export default function FamilyHubPage() {
     name: "",
     url: "",
     icon: "facebook",
+  });
+
+  const [newFamily, setNewFamily] = React.useState({
+    name: "",
+    imageUrl: "",
   });
 
   const [selectedFamilyId, setSelectedFamilyId] =
@@ -1116,6 +1128,8 @@ export default function FamilyHubPage() {
   const addPersonDisabled = newPerson.name.trim().length === 0;
 
   const addSocialDisabled = newSocial.name.trim().length === 0 || newSocial.url.trim().length === 0;
+  
+  const addFamilyDisabled = newFamily.name.trim().length === 0;
 
   const addChildToTree = React.useCallback(
     (root: FamilyNode, parentId: string, child: FamilyNode): FamilyNode => {
@@ -2125,6 +2139,89 @@ export default function FamilyHubPage() {
           </DialogContent>
         </Dialog>
 
+        <Dialog
+          open={editingFamily !== null}
+          onOpenChange={(open) => !open && setEditingFamily(null)}
+        >
+          <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Family</DialogTitle>
+              <DialogDescription>
+                Update family name and image.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3">
+              <div>
+                <div className="text-sm font-medium">Family Name</div>
+                <Input
+                  value={newFamily.name}
+                  onChange={(e) =>
+                    setNewFamily((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. The Smiths"
+                />
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-2">Family image</div>
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      <span className="font-semibold">Click to upload</span> or
+                      drag and drop
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, GIF
+                    </p>
+                  </div>
+                  <Input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const url = await uploadFile(file);
+                          setNewFamily((prev) => ({ ...prev, imageUrl: url }));
+                        } catch (error) {
+                          console.error("Upload failed:", error);
+                          const url = URL.createObjectURL(file);
+                          setNewFamily((prev) => ({ ...prev, imageUrl: url }));
+                        }
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="secondary"
+                onClick={() => setEditingFamily(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!editingFamily) return;
+                  await updateFamily({
+                    id: editingFamily,
+                    name: newFamily.name.trim(),
+                    imageUrl: safeUrl(newFamily.imageUrl) || undefined,
+                  });
+                  setEditingFamily(null);
+                }}
+              >
+                Update
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <div className="flex justify-center mb-6 mt-2">
           <img
             src={isDarkMode ? "/logo-dark.png" : "/logo-light.png"}
@@ -2192,18 +2289,21 @@ export default function FamilyHubPage() {
                             <Tabs
                               value={addMode}
                               onValueChange={(v) =>
-                                setAddMode(v as "event" | "news" | "person")
+                                setAddMode(v as "event" | "news" | "person" | "social" | "family")
                               }
                               className="mt-2"
                             >
-                              <TabsList className="flex w-full flex-wrap justify-start">
-                                <TabsTrigger value="event">Event</TabsTrigger>
-                                <TabsTrigger value="news">News</TabsTrigger>
-                                <TabsTrigger value="person">
-                                  Family member
+                              <TabsList className="flex w-full h-auto overflow-x-auto scrollbar-hide whitespace-nowrap justify-start gap-1 p-1 bg-muted/40 mb-4 items-center">
+                                <TabsTrigger value="event" className="px-3 h-8 text-xs sm:text-sm">Event</TabsTrigger>
+                                <TabsTrigger value="news" className="px-3 h-8 text-xs sm:text-sm">News</TabsTrigger>
+                                <TabsTrigger value="person" className="px-3 h-8 text-xs sm:text-sm">
+                                  Member
                                 </TabsTrigger>
-                                <TabsTrigger value="social">
-                                  Social Media
+                                <TabsTrigger value="social" className="px-3 h-8 text-xs sm:text-sm">
+                                  Social
+                                </TabsTrigger>
+                                <TabsTrigger value="family" className="px-3 h-8 text-xs sm:text-sm">
+                                  Family
                                 </TabsTrigger>
                               </TabsList>
 
@@ -2656,6 +2756,60 @@ export default function FamilyHubPage() {
                                   </div>
                                 </div>
                               </TabsContent>
+
+                              <TabsContent value="family" className="mt-3">
+                                <div className="grid gap-3">
+                                  <div>
+                                    <div className="text-sm font-medium">Family Name</div>
+                                    <Input
+                                      value={newFamily.name}
+                                      onChange={(e) =>
+                                        setNewFamily((prev) => ({
+                                          ...prev,
+                                          name: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="e.g. The Smiths"
+                                    />
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-medium mb-2">Family Image</div>
+                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <Camera className="w-8 h-8 mb-2 text-muted-foreground" />
+                                        <p className="mb-2 text-sm text-muted-foreground">
+                                          <span className="font-semibold">Click to upload</span> or
+                                          drag and drop
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          PNG, JPG, GIF
+                                        </p>
+                                      </div>
+                                      <Input
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            try {
+                                              const url = await uploadFile(file);
+                                              setNewFamily((prev) => ({ ...prev, imageUrl: url }));
+                                            } catch (error) {
+                                              console.error("Upload failed:", error);
+                                              const url = URL.createObjectURL(file);
+                                              setNewFamily((prev) => ({ ...prev, imageUrl: url }));
+                                            }
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                    {newFamily.imageUrl && (
+                                       <div className="mt-2 text-sm text-green-600">Image uploaded!</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </TabsContent>
                             </Tabs>
 
                             <DialogFooter>
@@ -2689,6 +2843,10 @@ export default function FamilyHubPage() {
                                     url: "",
                                     icon: "facebook",
                                   });
+                                  setNewFamily({
+                                    name: "",
+                                    imageUrl: "",
+                                  });
                                 }}
                               >
                                 Reset
@@ -2702,7 +2860,9 @@ export default function FamilyHubPage() {
                                       ? addPersonDisabled
                                       : addMode === "social"
                                         ? addSocialDisabled
-                                        : addEventDisabled
+                                        : addMode === "family"
+                                          ? addFamilyDisabled
+                                          : addEventDisabled
                                 }
                                 onClick={async () => {
                                   if (addMode === "social") {
@@ -2789,6 +2949,19 @@ export default function FamilyHubPage() {
                                       imageUrl: "",
                                     });
 
+                                    return;
+                                  }
+
+                                  if (addMode === "family") {
+                                    if (addFamilyDisabled) return;
+                                    await createFamily({
+                                      name: newFamily.name.trim(),
+                                      imageUrl: safeUrl(newFamily.imageUrl) || undefined,
+                                    });
+                                    setNewFamily({
+                                      name: "",
+                                      imageUrl: "",
+                                    });
                                     return;
                                   }
 
@@ -3921,30 +4094,67 @@ export default function FamilyHubPage() {
               <div className="overflow-x-auto">
                 <div className="flex gap-2 pb-2 min-w-max">
                   {families.map((family) => (
-                    <button
+                    <div
                       key={family._id}
-                      type="button"
-                      onClick={() => setSelectedFamilyId(family._id)}
                       className={
-                        "flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors whitespace-nowrap flex-shrink-0 " +
+                        "flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors whitespace-nowrap flex-shrink-0 group " +
                         (selectedFamilyId === family._id
                           ? "border-primary bg-accent"
                           : "border-border hover:bg-accent/50")
                       }
                     >
-                      <div className="size-6 overflow-hidden rounded-full border">
-                        <img
-                          src={family.imageUrl || "/placeholder.svg"}
-                          alt={family.name}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.src = "/placeholder.svg";
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium">{family.name}</span>
-                    </button>
+                      <button
+                        key={family._id}
+                        type="button"
+                        onClick={() => setSelectedFamilyId(family._id)}
+                        className="flex items-center gap-2"
+                      >
+                        <div className="size-6 overflow-hidden rounded-full border">
+                          <img
+                            src={family.imageUrl || "/placeholder.svg"}
+                            alt={family.name}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder.svg";
+                            }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium">{family.name}</span>
+                      </button>
+                      {isAdmin && (
+                        <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingFamily(family._id);
+                              setNewFamily({
+                                name: family.name,
+                                imageUrl: family.imageUrl || "",
+                              });
+                            }}
+                          >
+                            <Edit className="size-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Delete family "${family.name}"?`)) {
+                                deleteFamily({ id: family._id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
