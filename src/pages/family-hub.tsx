@@ -24,8 +24,6 @@ import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useTheme } from "@/contexts/theme-context";
 import { useQuery } from "convex/react";
-// import { api } from "../../convex/_generated/api";
-// import type { Id } from "../../convex/_generated/dataModel";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -543,9 +541,11 @@ function MediaTile({
           src={media.url}
           poster={"posterUrl" in media ? media.posterUrl : undefined}
           controls={!clickable}
-          muted={clickable}
+          muted
+          loop={clickable}
+          autoPlay={clickable}
           playsInline
-          preload="metadata"
+          preload="auto"
           onError={(e) => {
             console.log("Video failed to load:", media.url);
             // Don't hide the video, just show controls so user can try to play it
@@ -812,6 +812,66 @@ function DiagramTreeNode({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function EventListItem({
+  event,
+  onClick,
+}: {
+  event: any;
+  onClick: () => void;
+}) {
+  return (
+    <div
+      className="rounded-lg border p-3 transition-colors hover:bg-accent/30 cursor-pointer whitespace-nowrap flex-shrink-0 lg:whitespace-normal lg:flex-shrink w-48 lg:w-full"
+      onClick={onClick}
+    >
+      <div className="grid gap-2">
+        <MediaTile media={event.media} className="aspect-video w-full" />
+        <div className="min-w-0">
+          <div className="truncate font-medium text-sm">{event.title}</div>
+          <div className="text-muted-foreground text-xs">
+            {format(parseISO(event.dateISO), "MMM d")}
+          </div>
+          <Badge variant={kindVariant(event.kind)} className="mt-1">
+            {event.kind}
+          </Badge>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NewsListItem({
+  newsItem,
+  onClick,
+}: {
+  newsItem: any;
+  onClick: () => void;
+}) {
+  return (
+    <div
+      className="rounded-lg border p-3 transition-colors hover:bg-accent/30 cursor-pointer whitespace-nowrap flex-shrink-0 lg:whitespace-normal lg:flex-shrink w-48 lg:w-full"
+      onClick={onClick}
+    >
+      <div className="grid gap-2">
+        <MediaTile media={newsItem.media} className="aspect-video w-full" />
+        <div className="min-w-0">
+          <div className="truncate font-medium text-sm">{newsItem.title}</div>
+          <div className="text-muted-foreground text-xs">
+            {format(parseISO(newsItem.dateISO), "MMM d")}
+          </div>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {newsItem.tags.map((t: any) => (
+              <Badge key={t} variant={tagVariant(t)} className="text-xs">
+                {t}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2768,46 +2828,40 @@ export default function FamilyHubPage() {
                   <CardDescription>Click to view</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto lg:overflow-x-visible">
-                    <div className="flex gap-2 pb-2 min-w-max lg:block lg:min-w-0">
-                      <ScrollArea className="lg:h-[700px] lg:pr-3">
-                        <div className="flex gap-3 lg:grid lg:gap-3">
-                          {events.map((e) => (
-                            <div
-                              key={e._id}
-                              className="rounded-lg border p-3 transition-colors hover:bg-accent/30 cursor-pointer whitespace-nowrap flex-shrink-0 lg:whitespace-normal lg:flex-shrink w-48 lg:w-full"
-                              onClick={() => setSelectedEventId(e._id)}
-                            >
-                              <div className="grid gap-2">
-                                <MediaTile
-                                  media={e.media}
-                                  className="aspect-video w-full"
-                                />
-                                <div className="min-w-0">
-                                  <div className="truncate font-medium text-sm">
-                                    {e.title}
-                                  </div>
-                                  <div className="text-muted-foreground text-xs">
-                                    {format(parseISO(e.dateISO), "MMM d")}
-                                  </div>
-                                  <Badge
-                                    variant={kindVariant(e.kind)}
-                                    className="mt-1"
-                                  >
-                                    {e.kind}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          {events.length === 0 ? (
-                            <div className="text-muted-foreground rounded-lg border p-6 text-center text-sm">
-                              No events match "{query}".
-                            </div>
-                          ) : null}
-                        </div>
-                      </ScrollArea>
-                    </div>
+                  {/* Mobile View: Horizontal Scroll */}
+                  <div className="flex lg:hidden overflow-x-auto pb-4 gap-3">
+                    {events.map((e) => (
+                      <EventListItem
+                        key={e._id}
+                        event={e}
+                        onClick={() => setSelectedEventId(e._id)}
+                      />
+                    ))}
+                    {events.length === 0 ? (
+                      <div className="w-full text-muted-foreground rounded-lg border p-6 text-center text-sm">
+                        No events match "{query}".
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Desktop View: Vertical ScrollArea */}
+                  <div className="hidden lg:block">
+                    <ScrollArea className="h-[700px] pr-3">
+                      <div className="grid gap-3">
+                        {events.map((e) => (
+                          <EventListItem
+                            key={e._id}
+                            event={e}
+                            onClick={() => setSelectedEventId(e._id)}
+                          />
+                        ))}
+                        {events.length === 0 ? (
+                          <div className="text-muted-foreground rounded-lg border p-6 text-center text-sm">
+                            No events match "{query}".
+                          </div>
+                        ) : null}
+                      </div>
+                    </ScrollArea>
                   </div>
                 </CardContent>
               </Card>
@@ -3242,51 +3296,40 @@ export default function FamilyHubPage() {
                   <CardDescription>Click to view</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto lg:overflow-x-visible">
-                    <div className="flex gap-2 pb-2 min-w-max lg:block lg:min-w-0">
-                      <ScrollArea className="lg:h-[700px] lg:pr-3">
-                        <div className="flex gap-3 lg:grid lg:gap-3">
-                          {news.map((n) => (
-                            <div
-                              key={n._id}
-                              className="rounded-lg border p-3 transition-colors hover:bg-accent/30 cursor-pointer whitespace-nowrap flex-shrink-0 lg:whitespace-normal lg:flex-shrink w-48 lg:w-full"
-                              onClick={() => setSelectedNewsId(n._id)}
-                            >
-                              <div className="grid gap-2">
-                                <MediaTile
-                                  media={n.media}
-                                  className="aspect-video w-full"
-                                />
-                                <div className="min-w-0">
-                                  <div className="truncate font-medium text-sm">
-                                    {n.title}
-                                  </div>
-                                  <div className="text-muted-foreground text-xs">
-                                    {format(parseISO(n.dateISO), "MMM d")}
-                                  </div>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {n.tags.map((t) => (
-                                      <Badge
-                                        key={t}
-                                        variant={tagVariant(t)}
-                                        className="text-xs"
-                                      >
-                                        {t}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          {filteredNews.length === 0 ? (
-                            <div className="text-muted-foreground rounded-lg border p-6 text-center text-sm">
-                              No news matches “{query}”.
-                            </div>
-                          ) : null}
-                        </div>
-                      </ScrollArea>
-                    </div>
+                  {/* Mobile View: Horizontal Scroll */}
+                  <div className="flex lg:hidden overflow-x-auto pb-4 gap-3">
+                    {news.map((n) => (
+                      <NewsListItem
+                        key={n._id}
+                        newsItem={n}
+                        onClick={() => setSelectedNewsId(n._id)}
+                      />
+                    ))}
+                    {filteredNews.length === 0 ? (
+                      <div className="w-full text-muted-foreground rounded-lg border p-6 text-center text-sm">
+                        No news matches “{query}”.
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Desktop View: Vertical ScrollArea */}
+                  <div className="hidden lg:block">
+                    <ScrollArea className="h-[700px] pr-3">
+                      <div className="grid gap-3">
+                        {news.map((n) => (
+                          <NewsListItem
+                            key={n._id}
+                            newsItem={n}
+                            onClick={() => setSelectedNewsId(n._id)}
+                          />
+                        ))}
+                        {filteredNews.length === 0 ? (
+                          <div className="text-muted-foreground rounded-lg border p-6 text-center text-sm">
+                            No news matches “{query}”.
+                          </div>
+                        ) : null}
+                      </div>
+                    </ScrollArea>
                   </div>
                 </CardContent>
               </Card>
