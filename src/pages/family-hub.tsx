@@ -2054,8 +2054,8 @@ export default function FamilyHubPage() {
                         <DialogTrigger asChild>
                           <Button
                             type="button"
-                            size="lg"
-                            className="h-12 px-4 sm:px-6 rounded-lg flex-1 md:flex-none"
+                            size="sm"
+                            className="h-10 px-3 sm:h-12 sm:px-6 rounded-lg flex-1 md:flex-none"
                           >
                             <Plus className="size-5 mr-2" />
                             <span className="hidden sm:inline">Add Content</span>
@@ -2712,12 +2712,12 @@ export default function FamilyHubPage() {
                         <Button
                           type="button"
                           variant="outline"
-                          size="lg"
+                          size="sm"
                           onClick={() => {
                             logout();
                             navigate("/");
                           }}
-                          className="h-12 px-4 sm:px-6 rounded-lg flex-1 md:flex-none"
+                          className="h-10 px-3 sm:h-12 sm:px-6 rounded-lg flex-1 md:flex-none"
                         >
                           <LogOut className="size-5 mr-2" />
                           <span className="hidden sm:inline">Logout</span>
