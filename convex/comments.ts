@@ -87,3 +87,12 @@ export const addCommentReaction = mutation({
     }
   },
 });
+
+export const deleteComment = mutation({
+  args: {
+    commentId: v.id("comments"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.commentId);
+  },
+});

@@ -24,7 +24,6 @@ import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useTheme } from "@/contexts/theme-context";
 import { useQuery } from "convex/react";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -911,6 +910,7 @@ export default function FamilyHubPage() {
   const addNewsReaction = useMutation(api.news.addNewsReaction);
   const addComment = useMutation(api.comments.addComment);
   const addCommentReaction = useMutation(api.comments.addCommentReaction);
+  const deleteComment = useMutation(api.comments.deleteComment);
   const updateFamilyMember = useMutation(api.families.updateFamilyMember);
   const deleteFamilyMember = useMutation(api.families.deleteFamilyMember);
   const createSocialLink = useMutation(api.socialLinks.createSocialLink);
@@ -1193,22 +1193,28 @@ export default function FamilyHubPage() {
     [userReactions]
   );
 
+  const [activeCommentInput, setActiveCommentInput] = React.useState<string | null>(null);
+  const [commentAuthor, setCommentAuthor] = React.useState("");
+
   const handleAddComment = React.useCallback(
     async (type: "event" | "news", id: Id<"events"> | Id<"news">) => {
       const key = `${type}:${id}`;
       const text = (commentDrafts[key] ?? "").trim();
-      if (!text) return;
+      const author = commentAuthor.trim();
+      
+      if (!text || !author) return;
 
       await addComment({
         itemId: id,
         itemType: type,
-        author: "You",
+        author: author,
         text,
       });
 
       setCommentDrafts((prev) => ({ ...prev, [key]: "" }));
+      setActiveCommentInput(null);
     },
-    [commentDrafts, addComment]
+    [commentDrafts, commentAuthor, addComment]
   );
 
   React.useEffect(() => {
@@ -1492,14 +1498,30 @@ export default function FamilyHubPage() {
                           <div className="grid gap-2">
                             {activeGalleryComments.slice(-3).map((c) => (
                               <div key={c._id} className="rounded-md border p-2">
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="text-xs font-medium">
-                                    {c.author}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="text-xs font-medium">
+                                      {c.author}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-muted-foreground text-[11px]">
+                                        {format(parseISO(c.dateISO), "MMM d")}
+                                      </div>
+                                      {isAdmin && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
+                                          onClick={() => {
+                                            if (confirm("Delete this comment?")) {
+                                              deleteComment({ commentId: c._id as Id<"comments"> });
+                                            }
+                                          }}
+                                        >
+                                          <Trash2 className="size-3" />
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="text-muted-foreground text-[11px]">
-                                    {format(parseISO(c.dateISO), "MMM d")}
-                                  </div>
-                                </div>
                                 <div className="text-muted-foreground mt-1 text-sm">
                                   {c.text}
                                 </div>
@@ -1562,36 +1584,71 @@ export default function FamilyHubPage() {
                           </div>
                         )}
 
-                        <div className="mt-1 grid gap-2">
-                          <Input
-                            value={
-                              commentDrafts[
-                                `${activeGalleryItem.type}:${activeGalleryItem.id}`
-                              ] ?? ""
-                            }
-                            onChange={(e) =>
-                              setCommentDrafts((prev) => ({
-                                ...prev,
-                                [`${activeGalleryItem.type}:${activeGalleryItem.id}`]:
-                                  e.target.value,
-                              }))
-                            }
-                            placeholder="Write a comment…"
-                          />
-                          <Button
-                            type="button"
-                            onClick={() =>
-                              handleAddComment(
-                                activeGalleryItem.type,
-                                activeGalleryItem.id as
-                                  | Id<"events">
-                                  | Id<"news">
-                              )
-                            }
-                          >
-                            <MessageCircle />
-                            Comment
-                          </Button>
+                        <div className="mt-1">
+                          {activeCommentInput === `${activeGalleryItem.type}:${activeGalleryItem.id}` ? (
+                            <div className="grid gap-2 p-3 bg-muted/20 rounded-lg border">
+                              <div className="text-xs font-medium text-muted-foreground mb-1">New Comment</div>
+                              <Input
+                                value={commentAuthor}
+                                onChange={(e) => setCommentAuthor(e.target.value)}
+                                placeholder="Your full name"
+                                className="bg-background"
+                              />
+                              <Input
+                                value={
+                                  commentDrafts[
+                                    `${activeGalleryItem.type}:${activeGalleryItem.id}`
+                                  ] ?? ""
+                                }
+                                onChange={(e) =>
+                                  setCommentDrafts((prev) => ({
+                                    ...prev,
+                                    [`${activeGalleryItem.type}:${activeGalleryItem.id}`]:
+                                      e.target.value,
+                                  }))
+                                }
+                                placeholder="Write a comment…"
+                                className="bg-background"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setActiveCommentInput(null)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={!commentAuthor.trim() || !(commentDrafts[`${activeGalleryItem.type}:${activeGalleryItem.id}`] ?? "").trim()}
+                                  onClick={() =>
+                                    handleAddComment(
+                                      activeGalleryItem.type,
+                                      activeGalleryItem.id as
+                                        | Id<"events">
+                                        | Id<"news">
+                                    )
+                                  }
+                                >
+                                  <MessageCircle className="mr-1.5 size-4" />
+                                  Post
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                              onClick={() => {
+                                setActiveCommentInput(`${activeGalleryItem.type}:${activeGalleryItem.id}`);
+                                // Use previous author name if available (simple enhancement)
+                              }}
+                            >
+                              <MessageCircle className="mr-2 size-4" />
+                              Add a comment
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2115,7 +2172,7 @@ export default function FamilyHubPage() {
                           <Button
                             type="button"
                             size="sm"
-                            className="h-10 px-3 sm:h-12 sm:px-6 rounded-lg flex-1 md:flex-none"
+                            className="h-9 px-3 sm:h-10 sm:px-4 rounded-lg flex-1 md:flex-none"
                           >
                             <Plus className="size-5 mr-2" />
                             <span className="hidden sm:inline">Add Content</span>
@@ -2777,7 +2834,7 @@ export default function FamilyHubPage() {
                             logout();
                             navigate("/");
                           }}
-                          className="h-10 px-3 sm:h-12 sm:px-6 rounded-lg flex-1 md:flex-none"
+                          className="h-9 px-3 sm:h-10 sm:px-4 rounded-lg flex-1 md:flex-none"
                         >
                           <LogOut className="size-5 mr-2" />
                           <span className="hidden sm:inline">Logout</span>
@@ -3023,38 +3080,77 @@ export default function FamilyHubPage() {
                               </Button>
                             </div>
                           )}
-                          <Input
-                            value={
-                              commentDrafts[`event:${selectedEvent._id}`] ?? ""
-                            }
-                            onChange={(e) =>
-                              setCommentDrafts((prev) => ({
-                                ...prev,
-                                [`event:${selectedEvent._id}`]: e.target.value,
-                              }))
-                            }
-                            placeholder={
-                              replyingTo[`event:${selectedEvent._id}`]
-                                ? `Reply to ${replyingTo[`event:${selectedEvent._id}`]?.author}...`
-                                : "Add a comment…"
-                            }
-                          />
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              handleAddComment("event", selectedEvent._id);
-                              setReplyingTo((prev) => ({
-                                ...prev,
-                                [`event:${selectedEvent._id}`]: null,
-                              }));
-                            }}
-                            size="sm"
-                          >
-                            <MessageCircle className="size-4" />
-                            {replyingTo[`event:${selectedEvent._id}`]
-                              ? "Reply"
-                              : "Comment"}
-                          </Button>
+                          {activeCommentInput === `event:${selectedEvent._id}` || replyingTo[`event:${selectedEvent._id}`] ? (
+                            <div className="grid gap-2 p-3 bg-muted/20 rounded-lg border">
+                              {!replyingTo[`event:${selectedEvent._id}`] && (
+                                <div className="text-xs font-medium text-muted-foreground mb-1">New Comment</div>
+                              )}
+                              <Input
+                                value={commentAuthor}
+                                onChange={(e) => setCommentAuthor(e.target.value)}
+                                placeholder="Your full name"
+                                className="bg-background"
+                              />
+                              <Input
+                                value={
+                                  commentDrafts[`event:${selectedEvent._id}`] ?? ""
+                                }
+                                onChange={(e) =>
+                                  setCommentDrafts((prev) => ({
+                                    ...prev,
+                                    [`event:${selectedEvent._id}`]: e.target.value,
+                                  }))
+                                }
+                                placeholder={
+                                  replyingTo[`event:${selectedEvent._id}`]
+                                    ? `Reply to ${replyingTo[`event:${selectedEvent._id}`]?.author}...`
+                                    : "Add a comment…"
+                                }
+                                className="bg-background"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setActiveCommentInput(null);
+                                    setReplyingTo((prev) => ({
+                                      ...prev,
+                                      [`event:${selectedEvent._id}`]: null,
+                                    }));
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={!commentAuthor.trim() || !(commentDrafts[`event:${selectedEvent._id}`] ?? "").trim()}
+                                  onClick={() => {
+                                    handleAddComment("event", selectedEvent._id);
+                                    setReplyingTo((prev) => ({
+                                      ...prev,
+                                      [`event:${selectedEvent._id}`]: null,
+                                    }));
+                                  }}
+                                >
+                                  <MessageCircle className="mr-1.5 size-4" />
+                                  {replyingTo[`event:${selectedEvent._id}`]
+                                    ? "Reply"
+                                    : "Post"}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                              onClick={() => setActiveCommentInput(`event:${selectedEvent._id}`)}
+                            >
+                              <MessageCircle className="mr-2 size-4" />
+                              Add a comment
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -3083,8 +3179,24 @@ export default function FamilyHubPage() {
                                 <div className="text-sm font-medium">
                                   {c.author}
                                 </div>
-                                <div className="text-muted-foreground text-xs">
-                                  {format(parseISO(c.dateISO), "MMM d")}
+                                <div className="flex items-center gap-2">
+                                  <div className="text-muted-foreground text-xs">
+                                    {format(parseISO(c.dateISO), "MMM d")}
+                                  </div>
+                                  {isAdmin && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
+                                      onClick={() => {
+                                        if (confirm("Delete this comment?")) {
+                                          deleteComment({ commentId: c._id });
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="size-3" />
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                               <div className="text-sm mb-2">{c.text}</div>
@@ -3481,38 +3593,77 @@ export default function FamilyHubPage() {
                               </Button>
                             </div>
                           )}
-                          <Input
-                            value={
-                              commentDrafts[`news:${selectedNews._id}`] ?? ""
-                            }
-                            onChange={(e) =>
-                              setCommentDrafts((prev) => ({
-                                ...prev,
-                                [`news:${selectedNews._id}`]: e.target.value,
-                              }))
-                            }
-                            placeholder={
-                              replyingTo[`news:${selectedNews._id}`]
-                                ? `Reply to ${replyingTo[`news:${selectedNews._id}`]?.author}...`
-                                : "Add a comment…"
-                            }
-                          />
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              handleAddComment("news", selectedNews._id);
-                              setReplyingTo((prev) => ({
-                                ...prev,
-                                [`news:${selectedNews._id}`]: null,
-                              }));
-                            }}
-                            size="sm"
-                          >
-                            <MessageCircle className="size-4" />
-                            {replyingTo[`news:${selectedNews._id}`]
-                              ? "Reply"
-                              : "Comment"}
-                          </Button>
+                          {activeCommentInput === `news:${selectedNews._id}` || replyingTo[`news:${selectedNews._id}`] ? (
+                            <div className="grid gap-2 p-3 bg-muted/20 rounded-lg border">
+                              {!replyingTo[`news:${selectedNews._id}`] && (
+                                <div className="text-xs font-medium text-muted-foreground mb-1">New Comment</div>
+                              )}
+                              <Input
+                                value={commentAuthor}
+                                onChange={(e) => setCommentAuthor(e.target.value)}
+                                placeholder="Your full name"
+                                className="bg-background"
+                              />
+                              <Input
+                                value={
+                                  commentDrafts[`news:${selectedNews._id}`] ?? ""
+                                }
+                                onChange={(e) =>
+                                  setCommentDrafts((prev) => ({
+                                    ...prev,
+                                    [`news:${selectedNews._id}`]: e.target.value,
+                                  }))
+                                }
+                                placeholder={
+                                  replyingTo[`news:${selectedNews._id}`]
+                                    ? `Reply to ${replyingTo[`news:${selectedNews._id}`]?.author}...`
+                                    : "Add a comment…"
+                                }
+                                className="bg-background"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setActiveCommentInput(null);
+                                    setReplyingTo((prev) => ({
+                                      ...prev,
+                                      [`news:${selectedNews._id}`]: null,
+                                    }));
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={!commentAuthor.trim() || !(commentDrafts[`news:${selectedNews._id}`] ?? "").trim()}
+                                  onClick={() => {
+                                    handleAddComment("news", selectedNews._id);
+                                    setReplyingTo((prev) => ({
+                                      ...prev,
+                                      [`news:${selectedNews._id}`]: null,
+                                    }));
+                                  }}
+                                >
+                                  <MessageCircle className="mr-1.5 size-4" />
+                                  {replyingTo[`news:${selectedNews._id}`]
+                                    ? "Reply"
+                                    : "Post"}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                              onClick={() => setActiveCommentInput(`news:${selectedNews._id}`)}
+                            >
+                              <MessageCircle className="mr-2 size-4" />
+                              Add a comment
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -3541,8 +3692,24 @@ export default function FamilyHubPage() {
                                 <div className="text-sm font-medium">
                                   {c.author}
                                 </div>
-                                <div className="text-muted-foreground text-xs">
-                                  {format(parseISO(c.dateISO), "MMM d")}
+                                <div className="flex items-center gap-2">
+                                  <div className="text-muted-foreground text-xs">
+                                    {format(parseISO(c.dateISO), "MMM d")}
+                                  </div>
+                                  {isAdmin && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
+                                      onClick={() => {
+                                        if (confirm("Delete this comment?")) {
+                                          deleteComment({ commentId: c._id as Id<"comments"> });
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="size-3" />
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                               <div className="text-sm mb-2">{c.text}</div>
