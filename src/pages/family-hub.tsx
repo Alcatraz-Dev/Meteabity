@@ -924,6 +924,7 @@ export default function FamilyHubPage() {
   const createFamily = useMutation(api.families.createFamily);
   const updateFamily = useMutation(api.families.updateFamily);
   const deleteFamily = useMutation(api.families.deleteFamily);
+  const addFamilyMember = useMutation(api.families.addFamilyMember);
 
   const [newEvent, setNewEvent] = React.useState({
     title: "",
@@ -942,11 +943,20 @@ export default function FamilyHubPage() {
     mediaUrl: "",
   });
 
-  const [newPerson, setNewPerson] = React.useState({
+  const [newPerson, setNewPerson] = React.useState<{
+    name: string;
+    birthYear: string;
+    note: string;
+    imageUrl: string;
+    familyId: string;
+    parentId: string;
+  }>({
     name: "",
     birthYear: "",
     note: "",
     imageUrl: "",
+    familyId: "",
+    parentId: "",
   });
 
   const [newSocial, setNewSocial] = React.useState({
@@ -974,6 +984,12 @@ export default function FamilyHubPage() {
     useQuery(
       api.families.getFamilyNodes,
       selectedFamily ? { familyId: selectedFamily._id } : "skip"
+    ) || [];
+
+  const addPersonFamilyNodes =
+    useQuery(
+      api.families.getFamilyNodes,
+      newPerson.familyId ? { familyId: newPerson.familyId as Id<"families"> } : "skip"
     ) || [];
 
   // Build tree structure from flat nodes
@@ -1125,7 +1141,7 @@ export default function FamilyHubPage() {
     newNews.dateISO.trim().length === 0 ||
     newNews.summary.trim().length === 0;
 
-  const addPersonDisabled = newPerson.name.trim().length === 0;
+  const addPersonDisabled = newPerson.name.trim().length === 0 || !newPerson.familyId;
 
   const addSocialDisabled = newSocial.name.trim().length === 0 || newSocial.url.trim().length === 0;
   
@@ -1274,6 +1290,17 @@ export default function FamilyHubPage() {
       setSelectedPersonId(familyTree.id);
     }
   }, [familyTree, selectedPersonId]);
+
+  React.useEffect(() => {
+    if (addMode === "person") {
+      if (!newPerson.familyId && selectedFamilyId) {
+        setNewPerson(prev => ({ ...prev, familyId: selectedFamilyId }));
+      }
+      if (!newPerson.parentId && selectedPersonId && newPerson.familyId === selectedFamilyId) {
+        setNewPerson(prev => ({ ...prev, parentId: selectedPersonId }));
+      }
+    }
+  }, [addMode, selectedFamilyId, selectedPersonId, newPerson.familyId, newPerson.parentId]);
 
   return (
     <div className="min-h-dvh bg-background">
@@ -2568,11 +2595,60 @@ export default function FamilyHubPage() {
 
                               <TabsContent value="person" className="mt-3">
                                 <div className="grid gap-3">
-                                  <div className="rounded-lg border p-3 text-sm">
-                                    Adding as a child of:{" "}
-                                    <span className="font-medium">
-                                      {selectedPerson?.name ?? "Root"}
-                                    </span>
+                                  <div>
+                                    <div className="text-sm font-medium mb-1">
+                                      Family
+                                    </div>
+                                    <Select
+                                      value={newPerson.familyId}
+                                      onValueChange={(val) =>
+                                        setNewPerson((prev) => ({
+                                          ...prev,
+                                          familyId: val,
+                                          parentId: "", // Reset parent when family changes
+                                        }))
+                                      }
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select family" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {families.map((f) => (
+                                          <SelectItem key={f._id} value={f._id}>
+                                            {f.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div>
+                                    <div className="text-sm font-medium mb-1">
+                                      Add as a child of (Optional)
+                                    </div>
+                                    <Select
+                                      value={newPerson.parentId}
+                                      onValueChange={(val) =>
+                                        setNewPerson((prev) => ({
+                                          ...prev,
+                                          parentId: val,
+                                        }))
+                                      }
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Root (No parent)" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="root">
+                                          Root (No parent)
+                                        </SelectItem>
+                                        {addPersonFamilyNodes.map((n) => (
+                                          <SelectItem key={n._id} value={n._id}>
+                                            {n.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
 
                                   <div>
@@ -2804,9 +2880,12 @@ export default function FamilyHubPage() {
                                         }}
                                       />
                                     </label>
-                                    {newFamily.imageUrl && (
-                                       <div className="mt-2 text-sm text-green-600">Image uploaded!</div>
-                                    )}
+                                    <SafeMediaPreview
+                                      url={newFamily.imageUrl}
+                                      type="image"
+                                      alt={newFamily.name}
+                                      className="aspect-video mt-2"
+                                    />
                                   </div>
                                 </div>
                               </TabsContent>
@@ -2837,6 +2916,8 @@ export default function FamilyHubPage() {
                                     birthYear: "",
                                     note: "",
                                     imageUrl: "",
+                                    familyId: "",
+                                    parentId: "",
                                   });
                                   setNewSocial({
                                     name: "",
@@ -2912,34 +2993,37 @@ export default function FamilyHubPage() {
                                   if (addMode === "person") {
                                     if (addPersonDisabled) return;
 
-                                    const id = `p_${Date.now()}`;
                                     const birthYear = Number.parseInt(
                                       newPerson.birthYear.trim(),
                                       10
                                     );
 
-                                    const child: FamilyNode = {
-                                      id,
+                                    const parentIdStr = newPerson.parentId && newPerson.parentId !== "root" 
+                                      ? newPerson.parentId 
+                                      : undefined;
+
+                                    const newNodeId = await addFamilyMember({
+                                      familyId: newPerson.familyId as Id<"families">,
                                       name: newPerson.name.trim(),
                                       imageUrl:
                                         safeUrl(newPerson.imageUrl) ||
-                                        "./placeholder.svg",
+                                        "/placeholder.svg",
                                       birthYear: Number.isFinite(birthYear)
                                         ? birthYear
                                         : undefined,
                                       note: newPerson.note.trim() || undefined,
-                                      children: [],
-                                    };
+                                      parentId: parentIdStr as Id<"familyNodes"> | undefined,
+                                    });
 
-                                    const parentId =
-                                      selectedPersonId ??
-                                      (familyTree?.id || "p_1");
-                                    // TODO: Add family member to Convex
-                                    setExpanded((prev) => ({
-                                      ...prev,
-                                      [parentId]: true,
-                                    }));
-                                    setSelectedPersonId(id);
+                                    if (parentIdStr) {
+                                      setExpanded((prev) => ({
+                                        ...prev,
+                                        [parentIdStr]: true,
+                                      }));
+                                    }
+                                    
+                                    setSelectedFamilyId(newPerson.familyId as Id<"families">);
+                                    setSelectedPersonId(newNodeId);
                                     setTab("tree");
 
                                     setNewPerson({
@@ -2947,6 +3031,8 @@ export default function FamilyHubPage() {
                                       birthYear: "",
                                       note: "",
                                       imageUrl: "",
+                                      familyId: "",
+                                      parentId: "",
                                     });
 
                                     return;
@@ -4242,6 +4328,8 @@ export default function FamilyHubPage() {
                                       birthYear: node.birthYear?.toString() || "",
                                       note: node.note || "",
                                       imageUrl: node.imageUrl || "",
+                                      familyId: node.familyId,
+                                      parentId: node.parentId || "",
                                     });
                                   }
                                 }}
