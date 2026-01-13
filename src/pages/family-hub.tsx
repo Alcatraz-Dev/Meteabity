@@ -710,6 +710,8 @@ function DiagramTreeNode({
   onToggle,
   onSelect,
   level,
+  indexInLevel = 0,
+  totalSiblings = 1,
 }: {
   node: FamilyNode;
   expanded: Record<string, boolean>;
@@ -717,6 +719,8 @@ function DiagramTreeNode({
   onToggle: (id: string) => void;
   onSelect: (id: string) => void;
   level: number;
+  indexInLevel?: number;
+  totalSiblings?: number;
 }) {
   const isSelected = selectedId === node.id;
   const hasChildren = (node.children?.length ?? 0) > 0;
@@ -728,7 +732,17 @@ function DiagramTreeNode({
       <div className="relative group/node">
         {/* Connection line above - only for levels > 0 */}
         {level > 0 && (
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-linear-to-b from-border to-primary/40" />
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-0.5 h-10 bg-linear-to-b from-border to-primary/40" />
+        )}
+
+        {/* Horizontal connection line segment */}
+        {level > 0 && totalSiblings > 1 && (
+          <div className={cn(
+            "absolute -top-10 h-0.5 bg-border/60",
+            indexInLevel === 0 ? "left-1/2 right-[-28px]" :
+              indexInLevel === totalSiblings - 1 ? "left-[-28px] right-1/2" :
+                "left-[-28px] right-[-28px]"
+          )} />
         )}
 
         <div
@@ -820,24 +834,14 @@ function DiagramTreeNode({
 
         {/* Child connection lines start point */}
         {hasChildren && isExpanded && (
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-linear-to-b from-primary/40 to-border" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0.5 h-10 bg-linear-to-b from-primary/40 to-border" />
         )}
       </div>
 
       {hasChildren && isExpanded ? (
-        <div className="relative mt-8 flex flex-col items-center w-full">
-          {/* Horizontal connecting line */}
-          {children.length > 1 && (
-            <div className="absolute top-0 h-0.5 bg-border"
-              style={{
-                width: "calc(100% - 192px)", // Adjust based on node width
-                maxWidth: children.length > 1 ? `calc(${children.length} * 200px / 2)` : "0"
-              }}
-            />
-          )}
-
-          <div className="mt-0 flex flex-wrap justify-center gap-x-8 gap-y-12 pb-4 pt-0">
-            {children.map((child) => (
+        <div className="relative flex flex-col items-center w-full pt-10">
+          <div className="flex flex-wrap justify-center gap-x-10 gap-y-16 pb-4">
+            {children.map((child, idx) => (
               <div
                 key={child.id}
                 className="relative"
@@ -849,6 +853,8 @@ function DiagramTreeNode({
                   onToggle={onToggle}
                   onSelect={onSelect}
                   level={level + 1}
+                  indexInLevel={idx}
+                  totalSiblings={children.length}
                 />
               </div>
             ))}
@@ -4586,6 +4592,8 @@ export default function FamilyHubPage() {
                           }
                           onSelect={setSelectedPersonId}
                           level={0}
+                          indexInLevel={0}
+                          totalSiblings={1}
                         />
                       ) : (
                         <div className="text-muted-foreground text-center py-8">

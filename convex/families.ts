@@ -27,6 +27,7 @@ export const createFamily = mutation({
   },
 });
 
+// Trigger sync
 export const addFamilyMember = mutation({
   args: {
     familyId: v.id("families"),
