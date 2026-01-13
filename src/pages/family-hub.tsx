@@ -857,7 +857,7 @@ function DiagramTreeNode({
   const children = node.children ?? [];
 
   return (
-    <div className="flex flex-col items-start mr-28 lg:ml-0 lg:items-center">
+   <div className="flex flex-col items-start sm:items-center sm:mr-0 mr-0 lg:ml-0">
       {/* Parent Row (Father + Mother) */}
       <div className="relative flex items-center justify-start sm:justify-center gap-12 mb-12">
         {/* Connection Line DOWN from Parents */}
