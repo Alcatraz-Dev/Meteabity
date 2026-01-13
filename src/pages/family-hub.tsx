@@ -857,9 +857,9 @@ function DiagramTreeNode({
   const children = node.children ?? [];
 
   return (
-   <div className="flex flex-col items-start sm:items-center sm:mr-0 mr-0 lg:items-center">
+   <div className="flex flex-col w-full px-0 mx-0 items-start sm:items-stretch">
       {/* Parent Row (Father + Mother) */}
-      <div className="relative flex items-center justify-start sm:justify-center gap-12 mb-12">
+     <div className="relative flex flex-col sm:flex-row w-full items-stretch justify-start sm:justify-center gap-0 sm:gap-12 mb-6 sm:mb-12">
         {/* Connection Line DOWN from Parents */}
         {hasChildren && isExpanded && (
           <div className={cn(
@@ -902,7 +902,7 @@ function DiagramTreeNode({
 
       {/* Children Section */}
       {hasChildren && isExpanded ? (
-        <div className="relative flex flex-wrap justify-center gap-x-8 gap-y-12">
+        <div className="relative flex flex-col sm:flex-wrap w-full items-stretch justify-start sm:justify-center gap-0 sm:gap-x-8 sm:gap-y-12">
           {children.map((child, idx) => (
             <div key={child.id} className="relative">
               {/* Horizontal sibling connector bar */}
