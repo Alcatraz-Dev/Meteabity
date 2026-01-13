@@ -13,7 +13,6 @@ import type * as events from "../events.js";
 import type * as families from "../families.js";
 import type * as files from "../files.js";
 import type * as news from "../news.js";
-import type * as seed from "../seed.js";
 import type * as socialLinks from "../socialLinks.js";
 
 import type {
@@ -28,7 +27,6 @@ declare const fullApi: ApiFromModules<{
   families: typeof families;
   files: typeof files;
   news: typeof news;
-  seed: typeof seed;
   socialLinks: typeof socialLinks;
 }>;
 

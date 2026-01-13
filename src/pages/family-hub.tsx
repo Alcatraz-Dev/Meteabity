@@ -16,6 +16,7 @@ import {
   Plus,
   Search,
   Smile,
+  Star,
   ThumbsUp,
   Trash2,
   TreeDeciduous,
@@ -108,6 +109,7 @@ type FamilyNode = {
   parentId?: string;
   gender?: "male" | "female" | "other";
   children?: FamilyNode[];
+  partner?: FamilyNode;
 };
 
 type Family = {
@@ -704,29 +706,31 @@ function ReactionButton({
   );
 }
 
-function DiagramTreeNode({
-  node,
-  expanded,
-  selectedId,
-  onToggle,
-  onSelect,
+const DiagramPersonCard = ({
+  person,
+  isSelected,
   level,
-  indexInLevel = 0,
-  totalSiblings = 1,
+  onSelect,
+  onToggle,
+  isExpanded,
+  hasChildren,
+  childrenCount,
+  showToggle = false
 }: {
-  node: FamilyNode;
-  expanded: Record<string, boolean>;
-  selectedId: string | null;
-  onToggle: (id: string) => void;
-  onSelect: (id: string) => void;
+  person: FamilyNode;
+  isSelected: boolean;
   level: number;
-  indexInLevel?: number;
-  totalSiblings?: number;
-}) {
+  onSelect: (id: string) => void;
+  onToggle: (id: string) => void;
+  isExpanded: boolean;
+  hasChildren: boolean;
+  childrenCount: number;
+  showToggle?: boolean;
+}) => {
   const getRoleLabel = () => {
-    if (!node.gender) return null;
-    const isMale = node.gender === "male";
-    const isFemale = node.gender === "female";
+    if (!person.gender) return null;
+    const isMale = person.gender === "male";
+    const isFemale = person.gender === "female";
 
     if (level === 0 || hasChildren) {
       if (isMale) return "Father";
@@ -735,10 +739,6 @@ function DiagramTreeNode({
     }
 
     if (level > 0) {
-      if (totalSiblings > 1 && !hasChildren) {
-        if (isMale) return "Brother";
-        if (isFemale) return "Sister";
-      }
       if (isMale) return "Son";
       if (isFemale) return "Daughter";
       return "Child";
@@ -747,138 +747,186 @@ function DiagramTreeNode({
   };
 
   const roleLabel = getRoleLabel();
-  const isSelected = selectedId === node.id;
-  const hasChildren = (node.children?.length ?? 0) > 0;
+
+  return (
+    <div
+      className={cn(
+        "relative w-52 overflow-hidden rounded-2xl border transition-all duration-500 shrink-0",
+        "bg-card/40 backdrop-blur-xl hover:bg-card/70 hover:shadow-2xl hover:-translate-y-1.5",
+        isSelected
+          ? "ring-2 ring-primary ring-offset-4 border-primary/50 bg-primary/10 shadow-primary/20"
+          : "border-border/60 shadow-md"
+      )}
+    >
+      {isSelected && (
+        <div className="absolute inset-0 bg-linear-to-tr from-primary/5 via-transparent to-primary/10 animate-pulse" />
+      )}
+
+      {/* Role Badge - Floating at top right */}
+      {roleLabel && (
+        <div className={cn(
+          "absolute top-2 right-2 z-20 rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest shadow-xs",
+          person.gender === 'male' ? "bg-blue-500 text-white" :
+            person.gender === 'female' ? "bg-pink-500 text-white" :
+              "bg-primary text-primary-foreground"
+        )}>
+          {roleLabel}
+        </div>
+      )}
+
+      <div className={cn(
+        "h-1.5 w-full bg-linear-to-r",
+        level === 0 ? "from-primary to-primary/60" :
+          level === 1 ? "from-blue-500 to-indigo-400" :
+            level === 2 ? "from-emerald-500 to-teal-400" : "from-muted-foreground/40 to-muted-foreground/20"
+      )} />
+
+      <button
+        type="button"
+        onClick={() => onSelect(person.id)}
+        className="w-full p-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className={cn(
+              "size-14 shrink-0 overflow-hidden rounded-full border-2 p-0.5 transition-transform duration-300",
+              isSelected ? "border-primary" : "border-background"
+            )}>
+              <img
+                src={person.imageUrl || "/placeholder.svg"}
+                alt={person.name}
+                className="h-full w-full rounded-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-extrabold tracking-tight leading-tight">
+              {person.name}
+            </div>
+            <div className="text-muted-foreground mt-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+              <Calendar className="size-3" />
+              {person.birthYear ? `Born ${person.birthYear}` : "Unknown"}
+            </div>
+          </div>
+        </div>
+      </button>
+
+      {showToggle && (
+        <div className="absolute right-2 bottom-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-6 rounded-full bg-background/50 backdrop-blur-sm hover:bg-background p-0"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggle(person.id);
+            }}
+          >
+            <ChevronRight className={cn(
+              "size-3 transition-transform duration-300",
+              isExpanded ? "rotate-90" : ""
+            )} />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+function DiagramTreeNode({
+  node,
+  expanded,
+  selectedId,
+  onToggle,
+  onSelect,
+  level,
+}: {
+  node: FamilyNode;
+  expanded: Record<string, boolean>;
+  selectedId: string | null;
+  onToggle: (id: string) => void;
+  onSelect: (id: string) => void;
+  level: number;
+}) {
   const isExpanded = expanded[node.id] ?? level < 2;
+  const hasChildren = (node.children?.length ?? 0) > 0;
   const children = node.children ?? [];
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative group/node flex flex-col items-center">
-        <div
-          className={cn(
-            "relative w-52 overflow-hidden rounded-2xl border transition-all duration-500",
-            "bg-card/40 backdrop-blur-xl hover:bg-card/70 hover:shadow-2xl hover:-translate-y-1.5",
-            isSelected
-              ? "ring-2 ring-primary ring-offset-4 border-primary/50 bg-primary/10 shadow-primary/20"
-              : "border-border/60 shadow-md"
-          )}
-        >
-          {/* Decorative glow effect */}
-          {isSelected && (
-            <div className="absolute inset-0 bg-linear-to-tr from-primary/5 via-transparent to-primary/10 animate-pulse" />
-          )}
-
-          {/* Top accent bar with gradient */}
+      {/* Parent Row (Father + Mother) */}
+      <div className="relative flex items-center justify-center gap-20 mb-20">
+        {/* Connection Line DOWN from Parents */}
+        {hasChildren && isExpanded && (
           <div className={cn(
-            "h-1.5 w-full bg-linear-to-r",
-            level === 0 ? "from-primary to-primary/60" :
-              level === 1 ? "from-blue-500 to-indigo-400" :
-                level === 2 ? "from-emerald-500 to-teal-400" : "from-muted-foreground/40 to-muted-foreground/20"
+            "absolute left-1/2 -translate-x-1/2 w-1 bg-muted-foreground/20 z-0",
+            node.partner ? "top-1/2 h-20" : "top-full h-12"
           )} />
+        )}
 
-          <button
-            type="button"
-            onClick={() => onSelect(node.id)}
-            className="w-full p-4 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className={cn(
-                  "size-14 shrink-0 overflow-hidden rounded-full border-2 p-0.5 transition-transform duration-300 group-hover/node:scale-110",
-                  isSelected ? "border-primary" : "border-background"
-                )}>
-                  <img
-                    src={node.imageUrl || "/placeholder.svg"}
-                    alt={node.name}
-                    className="h-full w-full rounded-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.src = "/placeholder.svg";
-                    }}
-                  />
-                </div>
-                {hasChildren && (
-                  <div className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm">
-                    {children.length}
-                  </div>
-                )}
-              </div>
+        {/* Marriage Bridge */}
+        {node.partner && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-1 bg-muted-foreground/30 z-0" />
+        )}
 
-              <div className="min-w-0 flex-1">
-                {roleLabel && (
-                  <div className={cn(
-                    "mb-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider",
-                    node.gender === 'male' ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
-                      node.gender === 'female' ? "bg-pink-500/10 text-pink-500 border border-pink-500/20" :
-                        "bg-primary/10 text-primary border border-primary/20"
-                  )}>
-                    {roleLabel}
-                  </div>
-                )}
-                <div className="truncate text-sm font-bold tracking-tight">
-                  {node.name}
-                </div>
-                <div className="text-muted-foreground mt-0.5 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider">
-                  <Calendar className="size-2.5" />
-                  {node.birthYear ? `Born ${node.birthYear}` : "Unknown"}
-                </div>
-              </div>
-            </div>
+        <DiagramPersonCard
+          person={node}
+          isSelected={selectedId === node.id}
+          level={level}
+          onSelect={onSelect}
+          onToggle={onToggle}
+          isExpanded={isExpanded}
+          hasChildren={hasChildren}
+          childrenCount={children.length}
+          showToggle={hasChildren}
+        />
 
-            {node.note && (
-              <div className="mt-3 border-t pt-2">
-                <p className="line-clamp-1 text-[10px] text-muted-foreground italic">
-                  "{node.note}"
-                </p>
-              </div>
-            )}
-          </button>
-
-          {hasChildren && (
-            <div className="absolute right-2 top-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="size-6 rounded-full bg-background/50 backdrop-blur-sm hover:bg-background"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onToggle(node.id);
-                }}
-              >
-                <ChevronRight className={cn(
-                  "size-3 transition-transform duration-300",
-                  isExpanded ? "rotate-90" : ""
-                )} />
-              </Button>
-            </div>
-          )}
-        </div>
+        {node.partner && (
+          <DiagramPersonCard
+            person={node.partner}
+            isSelected={selectedId === node.partner.id}
+            level={level}
+            onSelect={onSelect}
+            onToggle={onToggle}
+            isExpanded={isExpanded}
+            hasChildren={hasChildren}
+            childrenCount={children.length}
+            showToggle={false}
+          />
+        )}
       </div>
 
+      {/* Children Section */}
       {hasChildren && isExpanded ? (
-        <div className="relative flex flex-col items-center w-full pt-8">
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-12 pb-4 relative">
-            {children.map((child, idx) => (
-              <div
-                key={child.id}
-                className="relative"
-              >
-                <DiagramTreeNode
-                  node={child}
-                  expanded={expanded}
-                  selectedId={selectedId}
-                  onToggle={onToggle}
-                  onSelect={onSelect}
-                  level={level + 1}
-                  indexInLevel={idx}
-                  totalSiblings={children.length}
-                />
-              </div>
-            ))}
-          </div>
+        <div className="relative flex flex-wrap justify-center gap-x-12 gap-y-16">
+          {children.map((child, idx) => (
+            <div key={child.id} className="relative">
+              {/* Horizontal sibling connector bar */}
+              {children.length > 1 && (
+                <div className={cn(
+                  "absolute -top-12 h-1 bg-muted-foreground/20",
+                  idx === 0 ? "left-1/2 right-0" :
+                    idx === children.length - 1 ? "left-0 right-1/2" :
+                      "left-0 right-0"
+                )} />
+              )}
+              {/* Vertical line from bar to child node */}
+              <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-1 h-12 bg-muted-foreground/20" />
+
+              <DiagramTreeNode
+                node={child}
+                expanded={expanded}
+                selectedId={selectedId}
+                onToggle={onToggle}
+                onSelect={onSelect}
+                level={level + 1}
+              />
+            </div>
+          ))}
         </div>
       ) : null}
     </div>
@@ -1098,8 +1146,43 @@ export default function FamilyHubPage() {
 
       visited.add(nodeId);
 
+      // Find potential partner (someone who shares children with this node)
+      const childrenOfThisNode = familyNodes.filter(
+        (n) => n.fatherId === nodeId || n.motherId === nodeId
+      );
+
+      let partnerNode: FamilyNode | undefined = undefined;
+      const partnerId = childrenOfThisNode
+        .map((c) => (c.fatherId === nodeId ? c.motherId : c.fatherId))
+        .find((pId) => pId && !visited.has(pId));
+
+      if (partnerId) {
+        const p = familyNodes.find((n) => n._id === partnerId);
+        if (p) {
+          visited.add(partnerId);
+          partnerNode = {
+            id: p._id,
+            name: p.name,
+            imageUrl: p.imageUrl,
+            birthYear: p.birthYear,
+            note: p.note,
+            gender: p.gender,
+            fatherId: p.fatherId,
+            motherId: p.motherId,
+            parentId: p.parentId,
+          };
+        }
+      }
+
       const children = familyNodes
-        .filter((n) => (n.parentId === nodeId || n.fatherId === nodeId || n.motherId === nodeId) && !visited.has(n._id))
+        .filter(
+          (n) =>
+            (n.parentId === nodeId ||
+              n.fatherId === nodeId ||
+              n.motherId === nodeId ||
+              (partnerId && (n.fatherId === partnerId || n.motherId === partnerId))) &&
+            !visited.has(n._id)
+        )
         .map((child) => buildTree(child._id, new Set(visited)));
 
       return {
@@ -1111,6 +1194,8 @@ export default function FamilyHubPage() {
         fatherId: node.fatherId,
         motherId: node.motherId,
         parentId: node.parentId,
+        gender: node.gender,
+        partner: partnerNode,
         children: children.length > 0 ? children : undefined,
       };
     };
@@ -1174,8 +1259,22 @@ export default function FamilyHubPage() {
     if (!selectedPersonId) return undefined;
     const node = familyNodes.find((n) => n._id === selectedPersonId);
     if (!node) return undefined;
+
+    const parents = familyNodes.filter(n => n._id === node.fatherId || n._id === node.motherId || n._id === node.parentId);
+    const children = familyNodes.filter(n => n.fatherId === node._id || n.motherId === node._id || n.parentId === node._id);
+    const siblings = familyNodes.filter(n =>
+      n._id !== node._id &&
+      ((n.fatherId && n.fatherId === node.fatherId) ||
+        (n.motherId && n.motherId === node.motherId) ||
+        (n.parentId && n.parentId === node.parentId))
+    );
+
+    // Find spouse/partner (people who share children)
+    const spouseIds = new Set(children.map(c => c.fatherId === node._id ? c.motherId : c.fatherId).filter(Boolean));
+    const spouses = familyNodes.filter(n => spouseIds.has(n._id));
+
     return {
-      id: node._id, // Map _id to id for consistency with the rest of the UI
+      id: node._id,
       name: node.name,
       imageUrl: node.imageUrl,
       birthYear: node.birthYear,
@@ -1183,6 +1282,11 @@ export default function FamilyHubPage() {
       fatherId: node.fatherId,
       motherId: node.motherId,
       parentId: node.parentId,
+      gender: node.gender,
+      parents,
+      children,
+      siblings,
+      spouses
     };
   }, [selectedPersonId, familyNodes]);
 
@@ -4593,74 +4697,129 @@ export default function FamilyHubPage() {
           </TabsContent>
 
           <TabsContent value="tree" className="mt-4">
-            <div className="mb-4">
-              <div className="overflow-x-auto">
-                <div className="flex gap-2 pb-2 min-w-max">
-                  {families.map((family) => (
-                    <div
-                      key={family._id}
-                      className={
-                        "flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors whitespace-nowrap flex-shrink-0 group " +
-                        (selectedFamilyId === family._id
-                          ? "border-primary bg-accent"
-                          : "border-border hover:bg-accent/50")
-                      }
+            <div className="mb-4 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {families.map((family) => (
+                  <div
+                    key={family._id}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-2 transition-all hover:bg-accent/30 group",
+                      selectedFamilyId === family._id
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border"
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFamilyId(family._id)}
+                      className="flex items-center gap-2"
                     >
-                      <button
-                        key={family._id}
-                        type="button"
-                        onClick={() => setSelectedFamilyId(family._id)}
-                        className="flex items-center gap-2"
-                      >
-                        <div className="size-6 overflow-hidden rounded-full border">
-                          <img
-                            src={family.imageUrl || "/placeholder.svg"}
-                            alt={family.name}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.src = "/placeholder.svg";
-                            }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium">{family.name}</span>
-                      </button>
-                      {isAdmin && (
-                        <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingFamily(family._id);
-                              setNewFamily({
-                                name: family.name,
-                                imageUrl: family.imageUrl || "",
-                              });
-                            }}
-                          >
-                            <Edit className="size-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm(`Delete family "${family.name}"?`)) {
-                                deleteFamily({ id: family._id });
-                              }
-                            }}
-                          >
-                            <Trash2 className="size-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                      <div className="size-6 overflow-hidden rounded-full border bg-muted shadow-xs">
+                        <img
+                          src={family.imageUrl || "/placeholder.svg"}
+                          alt={family.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <span className="text-sm font-bold">{family.name}</span>
+                    </button>
+                    {isAdmin && (
+                      <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-background"
+                          onClick={() => {
+                            setEditingFamily(family._id);
+                            setNewFamily({
+                              name: family.name,
+                              imageUrl: family.imageUrl || "",
+                            });
+                          }}
+                        >
+                          <Edit className="size-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:text-destructive hover:bg-background"
+                          onClick={() => {
+                            if (confirm(`Delete family "${family.name}"?`)) {
+                              deleteFamily({ id: family._id });
+                            }
+                          }}
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
+
+              {isAdmin && selectedFamilyId && (
+                <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-dashed bg-muted/30">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-2">Admin Testing Tools:</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-[10px] font-bold uppercase tracking-wider border-destructive/20 text-destructive hover:bg-destructive/10"
+                    onClick={async () => {
+                      if (confirm("DANGER: This will delete ALL members in this family tree line. Continue?")) {
+                        for (const node of familyNodes) {
+                          await deleteFamilyMember({ id: node._id });
+                        }
+                        setSelectedPersonId(null);
+                      }
+                    }}
+                  >
+                    <Trash2 className="mr-2 size-3" />
+                    Clear All Members
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-[10px] font-bold uppercase tracking-wider border-primary/20 text-primary hover:bg-primary/10"
+                    onClick={async () => {
+                      if (confirm("Reset and seed with: Father (Jordan), Mother (Mary), Son (Sam)?")) {
+                        // Clear first
+                        for (const node of familyNodes) {
+                          await deleteFamilyMember({ id: node._id });
+                        }
+
+                        // Seed
+                        const dadId = await addFamilyMemberV2({
+                          familyId: selectedFamilyId,
+                          name: "Jordan Lee (Father)",
+                          gender: "male",
+                          birthYear: 1954,
+                          note: "Test Patriarch"
+                        });
+                        const momId = await addFamilyMemberV2({
+                          familyId: selectedFamilyId,
+                          name: "Mary Lee (Mother)",
+                          gender: "female",
+                          birthYear: 1956,
+                          note: "Test Matriarch"
+                        });
+                        await addFamilyMemberV2({
+                          familyId: selectedFamilyId,
+                          name: "Sam Lee (Son)",
+                          gender: "male",
+                          birthYear: 1980,
+                          fatherId: dadId as any,
+                          motherId: momId as any,
+                          note: "Test Child correctly linked to both parents"
+                        });
+                        alert("Seed complete! The tree should now show the couple with their child.");
+                      }
+                    }}
+                  >
+                    <Star className="mr-2 size-3 text-yellow-500 fill-yellow-500" />
+                    Seed Test Logic (Father + Mother)
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="grid gap-4 md:grid-cols-[7fr_3fr] lg:grid-cols-[7fr_3fr] h-[calc(100vh-300px)]">
               <Card className="flex flex-col">
@@ -4746,8 +4905,6 @@ export default function FamilyHubPage() {
                             }
                             onSelect={setSelectedPersonId}
                             level={0}
-                            indexInLevel={0}
-                            totalSiblings={1}
                           />
                         ) : (
                           <div className="text-muted-foreground text-center py-8">
@@ -4786,10 +4943,24 @@ export default function FamilyHubPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-muted-foreground text-xs">
-                            Selected
+                            Selected Member
                           </div>
-                          <div className="truncate text-base font-semibold">
+                          <div className="truncate text-base font-bold">
                             {selectedPerson.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                            {selectedPerson.birthYear && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="size-2.5" />
+                                Born {selectedPerson.birthYear}
+                              </span>
+                            )}
+                            {selectedPerson.gender && (
+                              <>
+                                <span className="text-muted-foreground/30">•</span>
+                                <span className="capitalize">{selectedPerson.gender}</span>
+                              </>
+                            )}
                           </div>
                         </div>
                         {isAdmin && (
@@ -4841,30 +5012,113 @@ export default function FamilyHubPage() {
                       </div>
 
                       <div className="rounded-lg border p-4">
-                        <div className="text-muted-foreground text-xs">
-                          Name
+                        <div className="text-muted-foreground text-xs uppercase tracking-wider font-semibold mb-3 border-b pb-2">
+                          Relationships
                         </div>
-                        <div className="mt-1 text-lg font-semibold">
-                          {selectedPerson.name}
-                        </div>
-                      </div>
+                        <div className="grid gap-4">
+                          {/* Parents */}
+                          {selectedPerson.parents.length > 0 && (
+                            <div>
+                              <div className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Parents</div>
+                              <div className="grid gap-2">
+                                {selectedPerson.parents.map((p: any) => (
+                                  <button
+                                    key={p._id}
+                                    onClick={() => setSelectedPersonId(p._id)}
+                                    className="flex items-center gap-2 p-2 rounded-md hover:bg-accent transition-colors border border-transparent hover:border-border group"
+                                  >
+                                    <div className="size-8 rounded-full overflow-hidden border bg-muted">
+                                      <img src={p.imageUrl || "/placeholder.svg"} alt={p.name} className="size-full object-cover" />
+                                    </div>
+                                    <div className="text-left">
+                                      <div className="text-sm font-medium group-hover:text-primary transition-colors">{p.name}</div>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        {p.gender === 'male' ? 'Father' : p.gender === 'female' ? 'Mother' : 'Parent'}
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="rounded-lg border p-4">
-                          <div className="text-muted-foreground text-xs">
-                            Birth year
-                          </div>
-                          <div className="mt-1 text-sm font-medium">
-                            {selectedPerson.birthYear ?? "—"}
-                          </div>
-                        </div>
-                        <div className="rounded-lg border p-4">
-                          <div className="text-muted-foreground text-xs">
-                            Children
-                          </div>
-                          <div className="mt-1 text-sm font-medium">
-                            {familyNodes.filter(node => node.parentId === selectedPerson.id || node.fatherId === selectedPerson.id || node.motherId === selectedPerson.id).length}
-                          </div>
+                          {/* Spouses/Partners */}
+                          {selectedPerson.spouses.length > 0 && (
+                            <div>
+                              <div className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Spouse / Partner</div>
+                              <div className="grid gap-2">
+                                {selectedPerson.spouses.map((p: any) => (
+                                  <button
+                                    key={p._id}
+                                    onClick={() => setSelectedPersonId(p._id)}
+                                    className="flex items-center gap-2 p-2 rounded-md hover:bg-accent transition-colors border border-transparent hover:border-border group"
+                                  >
+                                    <div className="size-8 rounded-full overflow-hidden border bg-muted">
+                                      <img src={p.imageUrl || "/placeholder.svg"} alt={p.name} className="size-full object-cover" />
+                                    </div>
+                                    <div className="text-left">
+                                      <div className="text-sm font-medium group-hover:text-primary transition-colors">{p.name}</div>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        {p.gender === 'male' ? 'Husband' : p.gender === 'female' ? 'Wife' : 'Partner'}
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Siblings */}
+                          {selectedPerson.siblings.length > 0 && (
+                            <div>
+                              <div className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Siblings</div>
+                              <div className="grid gap-2">
+                                {selectedPerson.siblings.map((p: any) => (
+                                  <button
+                                    key={p._id}
+                                    onClick={() => setSelectedPersonId(p._id)}
+                                    className="flex items-center gap-2 p-2 rounded-md hover:bg-accent transition-colors border border-transparent hover:border-border group"
+                                  >
+                                    <div className="size-8 rounded-full overflow-hidden border bg-muted">
+                                      <img src={p.imageUrl || "/placeholder.svg"} alt={p.name} className="size-full object-cover" />
+                                    </div>
+                                    <div className="text-left">
+                                      <div className="text-sm font-medium group-hover:text-primary transition-colors">{p.name}</div>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        {p.gender === 'male' ? 'Brother' : p.gender === 'female' ? 'Sister' : 'Sibling'}
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Children */}
+                          {selectedPerson.children.length > 0 && (
+                            <div>
+                              <div className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Children</div>
+                              <div className="grid gap-2">
+                                {selectedPerson.children.map((p: any) => (
+                                  <button
+                                    key={p._id}
+                                    onClick={() => setSelectedPersonId(p._id)}
+                                    className="flex items-center gap-2 p-2 rounded-md hover:bg-accent transition-colors border border-transparent hover:border-border group"
+                                  >
+                                    <div className="size-8 rounded-full overflow-hidden border bg-muted">
+                                      <img src={p.imageUrl || "/placeholder.svg"} alt={p.name} className="size-full object-cover" />
+                                    </div>
+                                    <div className="text-left">
+                                      <div className="text-sm font-medium group-hover:text-primary transition-colors">{p.name}</div>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        {p.gender === 'male' ? 'Son' : p.gender === 'female' ? 'Daughter' : 'Child'}
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -4880,8 +5134,7 @@ export default function FamilyHubPage() {
                       <Separator />
 
                       <div className="text-muted-foreground text-xs">
-                        Family Lineage Diagram (above) is interactive. Click on
-                        a person node to view their details here.
+                        Tip: Click on any family member above to jump to their details.
                       </div>
                     </div>
                   ) : (
