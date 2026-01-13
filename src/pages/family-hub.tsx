@@ -859,7 +859,7 @@ function DiagramTreeNode({
   return (
     <div className="flex flex-col items-center">
       {/* Parent Row (Father + Mother) */}
-      <div className="relative flex items-center justify-center gap-12 mb-12">
+      <div className="relative flex items-center justify-start sm:justify-center gap-12 mb-12">
         {/* Connection Line DOWN from Parents */}
         {hasChildren && isExpanded && (
           <div className={cn(
@@ -4892,7 +4892,7 @@ export default function FamilyHubPage() {
                       </div>
                     ) : (
                       <div className="w-full overflow-x-auto pb-4 flex justify-center">
-                        <div className="min-w-fit scale-[0.8] xs:scale-[0.9] sm:scale-[0.9] origin-center pl-4 pr-8">
+                        <div className="min-w-fit scale-[0.8] xs:scale-[0.9] sm:scale-100 origin-center pl-4 pr-8">
                           {familyTree ? (
                             <DiagramTreeNode
                               node={familyTree}
