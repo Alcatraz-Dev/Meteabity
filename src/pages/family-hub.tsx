@@ -4891,8 +4891,8 @@ export default function FamilyHubPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="w-full overflow-x-auto pb-4">
-                        <div className="min-w-fit scale-[0.6] xs:scale-[0.65] sm:scale-75 md:scale-90 lg:scale-100 origin-top-left pl-4 pr-8">
+                      <div className="w-full overflow-x-auto pb-4 flex justify-center">
+                        <div className="min-w-fit scale-[0.4] xs:scale-[0.5] sm:scale-[0.6] md:scale-[0.7] lg:scale-[0.8] origin-center pl-4 pr-8">
                           {familyTree ? (
                             <DiagramTreeNode
                               node={familyTree}
