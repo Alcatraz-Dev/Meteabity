@@ -106,6 +106,7 @@ type FamilyNode = {
   fatherId?: string;
   motherId?: string;
   parentId?: string;
+  gender?: "male" | "female" | "other";
   children?: FamilyNode[];
 };
 
@@ -722,44 +723,58 @@ function DiagramTreeNode({
   indexInLevel?: number;
   totalSiblings?: number;
 }) {
+  const getRoleLabel = () => {
+    if (!node.gender) return null;
+    const isMale = node.gender === "male";
+    const isFemale = node.gender === "female";
+
+    if (level === 0 || hasChildren) {
+      if (isMale) return "Father";
+      if (isFemale) return "Mother";
+      return "Parent";
+    }
+
+    if (level > 0) {
+      if (totalSiblings > 1 && !hasChildren) {
+        if (isMale) return "Brother";
+        if (isFemale) return "Sister";
+      }
+      if (isMale) return "Son";
+      if (isFemale) return "Daughter";
+      return "Child";
+    }
+    return null;
+  };
+
+  const roleLabel = getRoleLabel();
   const isSelected = selectedId === node.id;
   const hasChildren = (node.children?.length ?? 0) > 0;
-  const isExpanded = expanded[node.id] ?? level < 2; // Expand more levels by default
+  const isExpanded = expanded[node.id] ?? level < 2;
   const children = node.children ?? [];
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative group/node">
-        {/* Connection line above - only for levels > 0 */}
-        {level > 0 && (
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-0.5 h-10 bg-linear-to-b from-border to-primary/40" />
-        )}
-
-        {/* Horizontal connection line segment */}
-        {level > 0 && totalSiblings > 1 && (
-          <div className={cn(
-            "absolute -top-10 h-0.5 bg-border/60",
-            indexInLevel === 0 ? "left-1/2 right-[-28px]" :
-              indexInLevel === totalSiblings - 1 ? "left-[-28px] right-1/2" :
-                "left-[-28px] right-[-28px]"
-          )} />
-        )}
-
+      <div className="relative group/node flex flex-col items-center">
         <div
           className={cn(
-            "relative w-48 overflow-hidden rounded-2xl border transition-all duration-300",
-            "bg-card/50 backdrop-blur-md hover:bg-card/80 hover:shadow-xl hover:-translate-y-1",
+            "relative w-52 overflow-hidden rounded-2xl border transition-all duration-500",
+            "bg-card/40 backdrop-blur-xl hover:bg-card/70 hover:shadow-2xl hover:-translate-y-1.5",
             isSelected
-              ? "ring-2 ring-primary ring-offset-2 border-primary bg-primary/5 shadow-primary/20"
-              : "border-border shadow-sm"
+              ? "ring-2 ring-primary ring-offset-4 border-primary/50 bg-primary/10 shadow-primary/20"
+              : "border-border/60 shadow-md"
           )}
         >
-          {/* Top accent bar */}
+          {/* Decorative glow effect */}
+          {isSelected && (
+            <div className="absolute inset-0 bg-linear-to-tr from-primary/5 via-transparent to-primary/10 animate-pulse" />
+          )}
+
+          {/* Top accent bar with gradient */}
           <div className={cn(
-            "h-1.5 w-full",
-            level === 0 ? "bg-primary" :
-              level === 1 ? "bg-blue-400" :
-                level === 2 ? "bg-emerald-400" : "bg-muted-foreground/30"
+            "h-1.5 w-full bg-linear-to-r",
+            level === 0 ? "from-primary to-primary/60" :
+              level === 1 ? "from-blue-500 to-indigo-400" :
+                level === 2 ? "from-emerald-500 to-teal-400" : "from-muted-foreground/40 to-muted-foreground/20"
           )} />
 
           <button
@@ -791,6 +806,16 @@ function DiagramTreeNode({
               </div>
 
               <div className="min-w-0 flex-1">
+                {roleLabel && (
+                  <div className={cn(
+                    "mb-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+                    node.gender === 'male' ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
+                      node.gender === 'female' ? "bg-pink-500/10 text-pink-500 border border-pink-500/20" :
+                        "bg-primary/10 text-primary border border-primary/20"
+                  )}>
+                    {roleLabel}
+                  </div>
+                )}
                 <div className="truncate text-sm font-bold tracking-tight">
                   {node.name}
                 </div>
@@ -831,16 +856,11 @@ function DiagramTreeNode({
             </div>
           )}
         </div>
-
-        {/* Child connection lines start point */}
-        {hasChildren && isExpanded && (
-          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0.5 h-10 bg-linear-to-b from-primary/40 to-border" />
-        )}
       </div>
 
       {hasChildren && isExpanded ? (
-        <div className="relative flex flex-col items-center w-full pt-10">
-          <div className="flex flex-wrap justify-center gap-x-10 gap-y-16 pb-4">
+        <div className="relative flex flex-col items-center w-full pt-8">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-12 pb-4 relative">
             {children.map((child, idx) => (
               <div
                 key={child.id}
@@ -964,7 +984,7 @@ export default function FamilyHubPage() {
   const addComment = useMutation(api.comments.addComment);
   const addCommentReaction = useMutation(api.comments.addCommentReaction);
   const deleteComment = useMutation(api.comments.deleteComment);
-  const updateFamilyMember = useMutation(api.families.updateFamilyMember);
+  const updateFamilyMemberV2 = useMutation(api.families.updateFamilyMemberV2);
   const deleteFamilyMember = useMutation(api.families.deleteFamilyMember);
   const createSocialLink = useMutation(api.socialLinks.createSocialLink);
   const deleteSocialLink = useMutation(api.socialLinks.deleteSocialLink);
@@ -972,7 +992,7 @@ export default function FamilyHubPage() {
   const createFamily = useMutation(api.families.createFamily);
   const updateFamily = useMutation(api.families.updateFamily);
   const deleteFamily = useMutation(api.families.deleteFamily);
-  const addFamilyMember = useMutation(api.families.addFamilyMember);
+  const addFamilyMemberV2 = useMutation(api.families.addFamilyMemberV2);
 
   const [newEvent, setNewEvent] = React.useState<{
     title: string;
@@ -1017,6 +1037,7 @@ export default function FamilyHubPage() {
     parentId: string;
     fatherId: string;
     motherId: string;
+    gender: string;
   }>({
     name: "",
     birthYear: "",
@@ -1026,6 +1047,7 @@ export default function FamilyHubPage() {
     parentId: "",
     fatherId: "",
     motherId: "",
+    gender: "",
   });
 
   const [newSocial, setNewSocial] = React.useState({
@@ -2270,6 +2292,27 @@ export default function FamilyHubPage() {
                       />
                     </div>
                     <div>
+                      <div className="text-sm font-medium">Gender</div>
+                      <Select
+                        value={newPerson.gender}
+                        onValueChange={(val) =>
+                          setNewPerson((prev) => ({
+                            ...prev,
+                            gender: val,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                           <div className="text-sm font-medium mb-1">Father (Optional)</div>
@@ -2342,7 +2385,7 @@ export default function FamilyHubPage() {
                         newPerson.birthYear.trim(),
                         10
                       );
-                      await updateFamilyMember({
+                      await updateFamilyMemberV2({
                         id: node._id,
                         name: newPerson.name.trim(),
                         imageUrl: safeUrl(newPerson.imageUrl) || undefined,
@@ -2352,6 +2395,7 @@ export default function FamilyHubPage() {
                         note: newPerson.note.trim() || undefined,
                         fatherId: (newPerson.fatherId as Id<"familyNodes">) || undefined,
                         motherId: (newPerson.motherId as Id<"familyNodes">) || undefined,
+                        gender: (newPerson.gender as any) || undefined,
                       });
                       setEditingPerson(null);
                     }
@@ -2964,6 +3008,30 @@ export default function FamilyHubPage() {
                                       </div>
                                     </div>
 
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                      <div>
+                                        <div className="text-sm font-medium mb-1">Gender</div>
+                                        <Select
+                                          value={newPerson.gender}
+                                          onValueChange={(val) =>
+                                            setNewPerson((prev) => ({
+                                              ...prev,
+                                              gender: val,
+                                            }))
+                                          }
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select gender" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="male">Male</SelectItem>
+                                            <SelectItem value="female">Female</SelectItem>
+                                            <SelectItem value="other">Other</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+
                                     <div>
                                       <div className="text-sm font-medium">
                                         Name
@@ -3235,6 +3303,7 @@ export default function FamilyHubPage() {
                                     parentId: "",
                                     fatherId: "",
                                     motherId: "",
+                                    gender: "",
                                   });
                                   setNewSocial({
                                     name: "",
@@ -3320,7 +3389,7 @@ export default function FamilyHubPage() {
                                       ? newPerson.parentId
                                       : undefined;
 
-                                    const newNodeId = await addFamilyMember({
+                                    const newNodeId = await addFamilyMemberV2({
                                       familyId: newPerson.familyId as Id<"families">,
                                       name: newPerson.name.trim(),
                                       imageUrl:
@@ -3332,6 +3401,7 @@ export default function FamilyHubPage() {
                                       note: newPerson.note.trim() || undefined,
                                       fatherId: (newPerson.fatherId as Id<"familyNodes">) || undefined,
                                       motherId: (newPerson.motherId as Id<"familyNodes">) || undefined,
+                                      gender: (newPerson.gender as any) || undefined,
                                     });
 
                                     if (newPerson.fatherId) {
@@ -3360,6 +3430,7 @@ export default function FamilyHubPage() {
                                       parentId: "",
                                       fatherId: "",
                                       motherId: "",
+                                      gender: "",
                                     });
 
                                     return;
@@ -4657,6 +4728,7 @@ export default function FamilyHubPage() {
                                     parentId: node.parentId || "",
                                     fatherId: node.fatherId || "",
                                     motherId: node.motherId || "",
+                                    gender: node.gender || "",
                                   });
                                 }
                               }}

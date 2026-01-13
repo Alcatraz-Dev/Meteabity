@@ -76,6 +76,7 @@ export default defineSchema({
     parentId: v.optional(v.id("familyNodes")),
     fatherId: v.optional(v.id("familyNodes")),
     motherId: v.optional(v.id("familyNodes")),
+    gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
   }).index("by_family", ["familyId"])
     .index("by_parent", ["parentId"])
     .index("by_father", ["fatherId"])

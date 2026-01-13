@@ -28,7 +28,7 @@ export const createFamily = mutation({
 });
 
 // Trigger sync
-export const addFamilyMember = mutation({
+export const addFamilyMemberV2 = mutation({
   args: {
     familyId: v.id("families"),
     name: v.string(),
@@ -38,13 +38,14 @@ export const addFamilyMember = mutation({
     parentId: v.optional(v.id("familyNodes")),
     fatherId: v.optional(v.id("familyNodes")),
     motherId: v.optional(v.id("familyNodes")),
+    gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("familyNodes", args);
   },
 });
 
-export const updateFamilyMember = mutation({
+export const updateFamilyMemberV2 = mutation({
   args: {
     id: v.id("familyNodes"),
     name: v.string(),
@@ -54,6 +55,7 @@ export const updateFamilyMember = mutation({
     fatherId: v.optional(v.id("familyNodes")),
     motherId: v.optional(v.id("familyNodes")),
     parentId: v.optional(v.id("familyNodes")),
+    gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
   },
   handler: async (ctx, args) => {
     const { id, ...updateData } = args;
