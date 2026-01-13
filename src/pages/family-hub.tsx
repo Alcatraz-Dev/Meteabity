@@ -751,7 +751,7 @@ const DiagramPersonCard = ({
   return (
     <div
       className={cn(
-        "relative w-44 overflow-hidden rounded-2xl border transition-all duration-500 shrink-0",
+        "relative w-44 lg:w-56 overflow-hidden rounded-2xl border transition-all duration-500 shrink-0",
         "bg-card/40 backdrop-blur-xl hover:bg-card/70 hover:shadow-2xl hover:-translate-y-1.5",
         isSelected
           ? "ring-2 ring-primary ring-offset-4 border-primary/50 bg-primary/10 shadow-primary/20"
@@ -814,7 +814,7 @@ const DiagramPersonCard = ({
       </button>
 
       {showToggle && (
-        <div className="absolute right-2 bottom-2">
+        <div className="absolute left-2 top-2 z-20">
           <Button
             type="button"
             variant="ghost"
@@ -863,14 +863,14 @@ function DiagramTreeNode({
         {/* Connection Line DOWN from Parents */}
         {hasChildren && isExpanded && (
           <div className={cn(
-            "absolute left-1/2 -translate-x-1/2 w-1 bg-muted-foreground/20 z-0",
+            "hidden md:block absolute left-1/2 -translate-x-1/2 w-1 bg-muted-foreground/20 z-0",
             node.partner ? "top-1/2 h-12" : "top-full h-8"
           )} />
         )}
 
         {/* Marriage Bridge */}
         {node.partner && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-muted-foreground/30 z-0" />
+          <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-muted-foreground/30 z-0" />
         )}
 
         <DiagramPersonCard
@@ -908,14 +908,14 @@ function DiagramTreeNode({
               {/* Horizontal sibling connector bar */}
               {children.length > 1 && (
                 <div className={cn(
-                  "absolute -top-12 h-1 bg-muted-foreground/20",
+                  "hidden md:block absolute -top-12 h-1 bg-muted-foreground/20",
                   idx === 0 ? "left-1/2 right-0" :
                     idx === children.length - 1 ? "left-0 right-1/2" :
                       "left-0 right-0"
                 )} />
               )}
               {/* Vertical line from bar to child node */}
-              <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-1 h-12 bg-muted-foreground/20" />
+              <div className="hidden md:block absolute -top-12 left-1/2 -translate-x-1/2 w-1 h-12 bg-muted-foreground/20" />
 
               <DiagramTreeNode
                 node={child}
