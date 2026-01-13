@@ -751,7 +751,7 @@ const DiagramPersonCard = ({
   return (
     <div
       className={cn(
-        "relative w-52 overflow-hidden rounded-2xl border transition-all duration-500 shrink-0",
+        "relative w-44 overflow-hidden rounded-2xl border transition-all duration-500 shrink-0",
         "bg-card/40 backdrop-blur-xl hover:bg-card/70 hover:shadow-2xl hover:-translate-y-1.5",
         isSelected
           ? "ring-2 ring-primary ring-offset-4 border-primary/50 bg-primary/10 shadow-primary/20"
@@ -859,18 +859,18 @@ function DiagramTreeNode({
   return (
     <div className="flex flex-col items-center">
       {/* Parent Row (Father + Mother) */}
-      <div className="relative flex items-center justify-center gap-20 mb-20">
+      <div className="relative flex items-center justify-center gap-12 mb-12">
         {/* Connection Line DOWN from Parents */}
         {hasChildren && isExpanded && (
           <div className={cn(
             "absolute left-1/2 -translate-x-1/2 w-1 bg-muted-foreground/20 z-0",
-            node.partner ? "top-1/2 h-20" : "top-full h-12"
+            node.partner ? "top-1/2 h-12" : "top-full h-8"
           )} />
         )}
 
         {/* Marriage Bridge */}
         {node.partner && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-1 bg-muted-foreground/30 z-0" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-muted-foreground/30 z-0" />
         )}
 
         <DiagramPersonCard
@@ -902,7 +902,7 @@ function DiagramTreeNode({
 
       {/* Children Section */}
       {hasChildren && isExpanded ? (
-        <div className="relative flex flex-wrap justify-center gap-x-12 gap-y-16">
+        <div className="relative flex flex-wrap justify-center gap-x-8 gap-y-12">
           {children.map((child, idx) => (
             <div key={child.id} className="relative">
               {/* Horizontal sibling connector bar */}
@@ -4892,7 +4892,7 @@ export default function FamilyHubPage() {
                       </div>
                     ) : (
                       <div className="w-full overflow-x-auto pb-4">
-                        <div className="mx-auto min-w-fit scale-75 sm:scale-90 md:scale-100 origin-top">
+                        <div className="mx-auto min-w-fit scale-[0.6] xs:scale-[0.65] sm:scale-75 md:scale-90 lg:scale-100 origin-top px-4">
                           {familyTree ? (
                             <DiagramTreeNode
                               node={familyTree}
