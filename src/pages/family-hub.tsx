@@ -1171,9 +1171,20 @@ export default function FamilyHubPage() {
   const selectedNews = news.find((n) => n._id === selectedNewsId);
 
   const selectedPerson = React.useMemo(() => {
-    if (!selectedPersonId || !familyTree) return undefined;
-    return findNode(familyTree, selectedPersonId);
-  }, [selectedPersonId, familyTree]);
+    if (!selectedPersonId) return undefined;
+    const node = familyNodes.find((n) => n._id === selectedPersonId);
+    if (!node) return undefined;
+    return {
+      id: node._id, // Map _id to id for consistency with the rest of the UI
+      name: node.name,
+      imageUrl: node.imageUrl,
+      birthYear: node.birthYear,
+      note: node.note,
+      fatherId: node.fatherId,
+      motherId: node.motherId,
+      parentId: node.parentId,
+    };
+  }, [selectedPersonId, familyNodes]);
 
   const glanceMediaEvents = React.useMemo(() => {
     return events
@@ -1228,6 +1239,18 @@ export default function FamilyHubPage() {
       return haystack.includes(q);
     });
   }, [news, query]);
+
+  const filteredPeople = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return familyNodes;
+    return familyNodes.filter((p) => {
+      const haystack = [p.name, p.note, p.birthYear?.toString(), p.gender]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [familyNodes, query]);
 
   const addEventDisabled =
     newEvent.title.trim().length === 0 || newEvent.dateISO.trim().length === 0;
@@ -3549,14 +3572,14 @@ export default function FamilyHubPage() {
                 <CardContent>
                   {/* Mobile View: Horizontal Scroll */}
                   <div className="flex lg:hidden overflow-x-auto pb-4 gap-3">
-                    {events.map((e) => (
+                    {filteredEvents.map((e) => (
                       <EventListItem
                         key={e._id}
                         event={e}
                         onClick={() => setSelectedEventId(e._id)}
                       />
                     ))}
-                    {events.length === 0 ? (
+                    {filteredEvents.length === 0 ? (
                       <div className="w-full text-muted-foreground rounded-lg border p-6 text-center text-sm">
                         No events match "{query}".
                       </div>
@@ -3567,14 +3590,14 @@ export default function FamilyHubPage() {
                   <div className="hidden lg:block">
                     <ScrollArea className="h-[700px] pr-3">
                       <div className="grid gap-3">
-                        {events.map((e) => (
+                        {filteredEvents.map((e) => (
                           <EventListItem
                             key={e._id}
                             event={e}
                             onClick={() => setSelectedEventId(e._id)}
                           />
                         ))}
-                        {events.length === 0 ? (
+                        {filteredEvents.length === 0 ? (
                           <div className="text-muted-foreground rounded-lg border p-6 text-center text-sm">
                             No events match "{query}".
                           </div>
@@ -4069,7 +4092,7 @@ export default function FamilyHubPage() {
                 <CardContent>
                   {/* Mobile View: Horizontal Scroll */}
                   <div className="flex lg:hidden overflow-x-auto pb-4 gap-3">
-                    {news.map((n) => (
+                    {filteredNews.map((n) => (
                       <NewsListItem
                         key={n._id}
                         newsItem={n}
@@ -4087,7 +4110,7 @@ export default function FamilyHubPage() {
                   <div className="hidden lg:block">
                     <ScrollArea className="h-[700px] pr-3">
                       <div className="grid gap-3">
-                        {news.map((n) => (
+                        {filteredNews.map((n) => (
                           <NewsListItem
                             key={n._id}
                             newsItem={n}
@@ -4642,38 +4665,99 @@ export default function FamilyHubPage() {
             <div className="grid gap-4 md:grid-cols-[7fr_3fr] lg:grid-cols-[7fr_3fr] h-[calc(100vh-300px)]">
               <Card className="flex flex-col">
                 <CardHeader>
-                  <CardTitle>Family Tree Diagram</CardTitle>
+                  <CardTitle>{query.trim() ? "Search Results" : "Family Tree Diagram"}</CardTitle>
                   <CardDescription>
-                    Interactive family tree with expandable nodes
+                    {query.trim()
+                      ? `Found ${filteredPeople.length} people match "${query}"`
+                      : "Interactive family tree with expandable nodes"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1">
                   <ScrollArea className="h-full pr-3">
-                    <div className="mx-auto max-w-fit">
-                      {familyTree ? (
-                        <DiagramTreeNode
-                          node={familyTree}
-                          expanded={expanded}
-                          selectedId={selectedPersonId}
-                          onToggle={(id) =>
-                            setExpanded((prev) => ({
-                              ...prev,
-                              [id]: !prev[id],
-                            }))
-                          }
-                          onSelect={setSelectedPersonId}
-                          level={0}
-                          indexInLevel={0}
-                          totalSiblings={1}
-                        />
-                      ) : (
-                        <div className="text-muted-foreground text-center py-8">
-                          {familyNodes.length === 0
-                            ? "Loading family tree..."
-                            : "No family tree data available"}
-                        </div>
-                      )}
-                    </div>
+                    {query.trim() ? (
+                      <div className="grid gap-2">
+                        {filteredPeople.map((p) => (
+                          <div
+                            key={p._id}
+                            className={cn(
+                              "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors shadow-sm",
+                              selectedPersonId === p._id
+                                ? "bg-primary/10 border-primary ring-1 ring-primary/20"
+                                : "hover:bg-accent/50 border-border"
+                            )}
+                            onClick={() => setSelectedPersonId(p._id)}
+                          >
+                            <div className="size-10 overflow-hidden rounded-full border bg-muted shadow-inner">
+                              <img
+                                src={p.imageUrl || "/placeholder.svg"}
+                                alt={p.name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = "/placeholder.svg";
+                                }}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold truncate text-sm">
+                                {p.name}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                {p.birthYear && (
+                                  <>
+                                    <span>Born {p.birthYear}</span>
+                                    {p.gender && <span className="text-muted-foreground/30">•</span>}
+                                  </>
+                                )}
+                                {p.gender && (
+                                  <span className="capitalize">{p.gender}</span>
+                                )}
+                              </div>
+                            </div>
+                            <ChevronRight className={cn(
+                              "size-4 text-muted-foreground/30",
+                              selectedPersonId === p._id && "text-primary"
+                            )} />
+                          </div>
+                        ))}
+                        {filteredPeople.length === 0 && (
+                          <div className="text-center py-12 px-4 rounded-xl border-2 border-dashed border-muted">
+                            <Search className="size-8 mx-auto mb-3 text-muted-foreground/20" />
+                            <p className="text-base font-medium text-muted-foreground">
+                              No people match "{query}"
+                            </p>
+                            <p className="text-sm text-muted-foreground/60 mt-1">
+                              Try a different name or detail.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="mx-auto max-w-fit">
+                        {familyTree ? (
+                          <DiagramTreeNode
+                            node={familyTree}
+                            expanded={expanded}
+                            selectedId={selectedPersonId}
+                            onToggle={(id) =>
+                              setExpanded((prev) => ({
+                                ...prev,
+                                [id]: !prev[id],
+                              }))
+                            }
+                            onSelect={setSelectedPersonId}
+                            level={0}
+                            indexInLevel={0}
+                            totalSiblings={1}
+                          />
+                        ) : (
+                          <div className="text-muted-foreground text-center py-8">
+                            {familyNodes.length === 0
+                              ? "Loading family tree..."
+                              : "No family tree data available"}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </ScrollArea>
                 </CardContent>
               </Card>
