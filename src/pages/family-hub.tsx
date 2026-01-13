@@ -751,7 +751,7 @@ const DiagramPersonCard = ({
   return (
     <div
       className={cn(
-        "relative w-36 xs:w-40 sm:w-44 md:w-48 lg:w-56 overflow-hidden rounded-2xl border transition-all duration-500 shrink-0",
+        "relative w-48 overflow-hidden rounded-2xl border transition-all duration-500 shrink-0",
         "bg-card/40 backdrop-blur-xl hover:bg-card/70 hover:shadow-2xl hover:-translate-y-1.5",
         isSelected
           ? "ring-2 ring-primary ring-offset-4 border-primary/50 bg-primary/10 shadow-primary/20"
