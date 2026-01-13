@@ -4821,8 +4821,8 @@ export default function FamilyHubPage() {
                 </div>
               )}
             </div>
-            <div className="grid gap-4 md:grid-cols-[7fr_3fr] lg:grid-cols-[7fr_3fr] h-[calc(100vh-300px)]">
-              <Card className="flex flex-col">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-[7fr_3fr] lg:grid-cols-[7fr_3fr] min-h-[calc(100vh-300px)]">
+              <Card className="flex flex-col overflow-hidden">
                 <CardHeader>
                   <CardTitle>{query.trim() ? "Search Results" : "Family Tree Diagram"}</CardTitle>
                   <CardDescription>
@@ -4831,10 +4831,10 @@ export default function FamilyHubPage() {
                       : "Interactive family tree with expandable nodes"}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex-1">
-                  <ScrollArea className="h-full pr-3">
+                <CardContent className="flex-1 overflow-hidden">
+                  <ScrollArea className="h-full w-full">
                     {query.trim() ? (
-                      <div className="grid gap-2">
+                      <div className="grid gap-2 pr-3">
                         {filteredPeople.map((p) => (
                           <div
                             key={p._id}
@@ -4891,28 +4891,30 @@ export default function FamilyHubPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="mx-auto max-w-fit">
-                        {familyTree ? (
-                          <DiagramTreeNode
-                            node={familyTree}
-                            expanded={expanded}
-                            selectedId={selectedPersonId}
-                            onToggle={(id) =>
-                              setExpanded((prev) => ({
-                                ...prev,
-                                [id]: !prev[id],
-                              }))
-                            }
-                            onSelect={setSelectedPersonId}
-                            level={0}
-                          />
-                        ) : (
-                          <div className="text-muted-foreground text-center py-8">
-                            {familyNodes.length === 0
-                              ? "Loading family tree..."
-                              : "No family tree data available"}
-                          </div>
-                        )}
+                      <div className="w-full overflow-x-auto pb-4">
+                        <div className="mx-auto min-w-fit scale-75 sm:scale-90 md:scale-100 origin-top">
+                          {familyTree ? (
+                            <DiagramTreeNode
+                              node={familyTree}
+                              expanded={expanded}
+                              selectedId={selectedPersonId}
+                              onToggle={(id) =>
+                                setExpanded((prev) => ({
+                                  ...prev,
+                                  [id]: !prev[id],
+                                }))
+                              }
+                              onSelect={setSelectedPersonId}
+                              level={0}
+                            />
+                          ) : (
+                            <div className="text-muted-foreground text-center py-8">
+                              {familyNodes.length === 0
+                                ? "Loading family tree..."
+                                : "No family tree data available"}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </ScrollArea>
