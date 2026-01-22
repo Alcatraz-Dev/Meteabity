@@ -529,6 +529,19 @@ function MediaTile({
     );
   }
 
+  // Check for blob URLs in images too
+  const isBlob = media.url.startsWith('blob:');
+  if (isBlob) {
+    return (
+      <div className={`bg-muted text-muted-foreground flex items-center justify-center rounded-md border text-center p-4 ${className ?? ""}`}>
+        <div className="flex flex-col items-center gap-2 text-xs">
+          <Camera className="size-6 opacity-20" />
+          <span>Image preview unavailable</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Component
       type={clickable ? "button" : undefined}
@@ -2394,14 +2407,14 @@ export default function FamilyHubPage() {
                             const file = e.target.files?.[0];
                             if (file) {
                               const blobUrl = URL.createObjectURL(file);
-                              setNewNewsItem((prev) => ({ ...prev, mediaUrl: blobUrl }));
+                              setNewNewsItem((prev) => ({ ...prev, mediaUrl: blobUrl, isUploading: true }));
                               try {
                                 const url = await uploadFile(file);
-                                setNewNewsItem((prev) => ({ ...prev, mediaUrl: url }));
+                                setNewNewsItem((prev) => ({ ...prev, mediaUrl: url, isUploading: false }));
                               } catch (error) {
                                 console.error("Upload failed:", error);
                                 alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                                setNewNewsItem((prev) => ({ ...prev, mediaUrl: "" }));
+                                setNewNewsItem((prev) => ({ ...prev, mediaUrl: "", isUploading: false }));
                               }
                             }
                           }}
@@ -2518,14 +2531,14 @@ export default function FamilyHubPage() {
                             const file = e.target.files?.[0];
                             if (file) {
                               const blobUrl = URL.createObjectURL(file);
-                              setNewPerson((prev) => ({ ...prev, imageUrl: blobUrl }));
+                              setNewPerson((prev) => ({ ...prev, imageUrl: blobUrl, isUploading: true }));
                               try {
                                 const url = await uploadFile(file);
-                                setNewPerson((prev) => ({ ...prev, imageUrl: url }));
+                                setNewPerson((prev) => ({ ...prev, imageUrl: url, isUploading: false }));
                               } catch (error) {
                                 console.error("Upload failed:", error);
                                 alert("Upload failed. Please try again.");
-                                setNewPerson((prev) => ({ ...prev, imageUrl: "" }));
+                                setNewPerson((prev) => ({ ...prev, imageUrl: "", isUploading: false }));
                               }
                             }
                           }}
