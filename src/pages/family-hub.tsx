@@ -470,6 +470,19 @@ function MediaTile({
   const Component = clickable ? "button" : "div";
 
   if (media.type === "video") {
+    // Prevent trying to load blob URLs that might have been saved to DB by mistake
+    const isBlob = media.url.startsWith('blob:');
+    if (isBlob) {
+      return (
+        <div className={`bg-muted text-muted-foreground flex items-center justify-center rounded-md border text-center p-4 ${className ?? ""}`}>
+          <div className="flex flex-col items-center gap-2 text-xs">
+            <Clapperboard className="size-6 opacity-20" />
+            <span>Video preview unavailable</span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <Component
         type={clickable ? "button" : undefined}
@@ -935,6 +948,17 @@ export default function FamilyHubPage() {
 
   const mapDoc = (doc: any) => {
     const mapped = { ...doc, id: doc._id };
+
+    // Sanitize blob URLs from database data
+    if (mapped.media?.url && mapped.media.url.startsWith('blob:')) {
+      console.warn("Filtered out blob URL from media:", mapped.id);
+      mapped.media.url = ""; // Clear invalid URL
+    }
+    if (mapped.imageUrl && mapped.imageUrl.startsWith('blob:')) {
+      console.warn("Filtered out blob URL from imageUrl:", mapped.id);
+      mapped.imageUrl = ""; // Clear invalid URL
+    }
+
     // Handle legacy 'person' type field mapping
     if (doc._type === "person") {
       mapped.name = doc.fullName || doc.name;
