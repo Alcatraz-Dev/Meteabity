@@ -3766,7 +3766,7 @@ export default function FamilyHubPage() {
               value="tree"
               className="text-[10px] sm:text-sm data-[state=active]:bg-zinc-200 dark:data-[state=active]:bg-zinc-200 dark:data-[state=active]:text-black"
             >
-              <TreeDeciduous className="mr-1 sm:mr-2 size-3 sm:size-4" />
+              <TreeDeciduous className="size-3 sm:size-4" />
               Family tree
             </TabsTrigger>
           </TabsList>
