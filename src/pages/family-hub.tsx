@@ -4220,7 +4220,7 @@ export default function FamilyHubPage() {
                         key={family._id}
                         onClick={() => setSelectedFamilyId(family._id)}
                         className={cn(
-                          "flex-none w-48 group relative cursor-pointer rounded-2xl border-2 p-4 transition-all duration-300 hover:shadow-lg",
+                          "flex-none w-36 sm:w-48 group relative cursor-pointer rounded-2xl border-2 p-3 sm:p-4 transition-all duration-300 hover:shadow-lg",
                           selectedFamilyId === family._id
                             ? "border-primary bg-primary/5 shadow-md scale-[1.02]"
                             : "border-transparent bg-card hover:border-border"
@@ -4258,7 +4258,7 @@ export default function FamilyHubPage() {
                         </div>
 
                         {isAdmin && (
-                          <div className="absolute top-2 right-2 flex gap-1 opacity-100 transition-opacity">
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <Button
                               variant="secondary"
                               size="icon"
