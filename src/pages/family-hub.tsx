@@ -509,7 +509,7 @@ function MediaTile({
           loop={clickable}
           autoPlay={clickable}
           playsInline
-          preload="auto"
+          preload="metadata"
           onError={(e) => {
             console.log("Video failed to load:", media.url);
             // Don't hide the video, just show controls so user can try to play it
@@ -1339,6 +1339,7 @@ export default function FamilyHubPage() {
     notes: string;
     mediaType: MediaAsset["type"];
     mediaUrl: string;
+    posterUrl?: string;
     mediaFile?: File;
     isUploading?: boolean;
   }>({
@@ -1350,6 +1351,7 @@ export default function FamilyHubPage() {
     notes: "",
     mediaType: "image",
     mediaUrl: "",
+    posterUrl: "",
   });
 
 
@@ -2407,14 +2409,29 @@ export default function FamilyHubPage() {
                             const file = e.target.files?.[0];
                             if (file) {
                               const blobUrl = URL.createObjectURL(file);
-                              setNewNewsItem((prev) => ({ ...prev, mediaUrl: blobUrl, isUploading: true }));
+
+                              // Generate poster for videos
+                              if (newNewsItem.mediaType === "video") {
+                                setNewNewsItem((prev) => ({ ...prev, mediaUrl: blobUrl, isUploading: true }));
+                                try {
+                                  // Import the video utils
+                                  const { generateVideoPoster } = await import("@/lib/video-utils");
+                                  const posterUrl = await generateVideoPoster(file);
+                                  setNewNewsItem((prev) => ({ ...prev, posterUrl }));
+                                } catch (error) {
+                                  console.error("Failed to generate poster:", error);
+                                }
+                              } else {
+                                setNewNewsItem((prev) => ({ ...prev, mediaUrl: blobUrl, isUploading: true }));
+                              }
+
                               try {
                                 const url = await uploadFile(file);
                                 setNewNewsItem((prev) => ({ ...prev, mediaUrl: url, isUploading: false }));
                               } catch (error) {
                                 console.error("Upload failed:", error);
                                 alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                                setNewNewsItem((prev) => ({ ...prev, mediaUrl: "", isUploading: false }));
+                                setNewNewsItem((prev) => ({ ...prev, mediaUrl: "", posterUrl: "", isUploading: false }));
                               }
                             }
                           }}
@@ -2426,6 +2443,7 @@ export default function FamilyHubPage() {
                             ? ({
                               type: newNewsItem.mediaType,
                               url: safeUrl(newNewsItem.mediaUrl),
+                              posterUrl: newNewsItem.mediaType === "video" ? newNewsItem.posterUrl : undefined,
                               alt: newNewsItem.title.trim() || "",
                             } as MediaAsset)
                             : undefined
@@ -2456,6 +2474,7 @@ export default function FamilyHubPage() {
                         ? ({
                           type: newNewsItem.mediaType,
                           url: mediaUrl,
+                          posterUrl: newNewsItem.mediaType === "video" ? newNewsItem.posterUrl : undefined,
                           alt:
                             newNewsItem.mediaType === "image"
                               ? newNewsItem.title.trim()
@@ -3050,17 +3069,18 @@ export default function FamilyHubPage() {
                                       </div>
                                       <Separator />
                                       <SafeFileUpload
-                                        onFileSelect={async (url, file) => {
+                                        onFileSelect={async (url, file, posterUrl) => {
                                           if (file) {
                                             // Set preview immediately and mark as uploading
-                                            setNewNewsItem(prev => ({ ...prev, mediaUrl: url, isUploading: true }));
+                                            setNewNewsItem(prev => ({ ...prev, mediaUrl: url, posterUrl: posterUrl, isUploading: true }));
                                             try {
                                               const uploadedUrl = await uploadFile(file);
+                                              // Keep the posterUrl (it's a blob URL for the thumbnail)
                                               setNewNewsItem(prev => ({ ...prev, mediaUrl: uploadedUrl, isUploading: false }));
                                             } catch (error) {
                                               console.error("Upload failed:", error);
                                               alert("Media upload failed. Please try again.");
-                                              setNewNewsItem(prev => ({ ...prev, mediaUrl: "", isUploading: false }));
+                                              setNewNewsItem(prev => ({ ...prev, mediaUrl: "", posterUrl: "", isUploading: false }));
                                             }
                                           }
                                         }}
@@ -3072,6 +3092,7 @@ export default function FamilyHubPage() {
                                         url={newNewsItem.mediaUrl}
                                         type={newNewsItem.mediaType}
                                         alt={newNewsItem.title}
+                                        posterUrl={newNewsItem.posterUrl}
                                         className="aspect-video"
                                       />
                                     </div>
@@ -3515,6 +3536,7 @@ export default function FamilyHubPage() {
                                     notes: "",
                                     mediaType: "image",
                                     mediaUrl: "",
+                                    posterUrl: "",
                                   });
                                   setNewPerson({
                                     name: "",
@@ -3658,6 +3680,7 @@ export default function FamilyHubPage() {
                                       ? ({
                                         type: newNewsItem.mediaType,
                                         url: mediaUrl,
+                                        posterUrl: newNewsItem.mediaType === "video" ? newNewsItem.posterUrl : undefined,
                                         alt:
                                           newNewsItem.mediaType === "image"
                                             ? newNewsItem.title.trim()
@@ -3674,6 +3697,7 @@ export default function FamilyHubPage() {
                                     notes: "",
                                     mediaType: "image",
                                     mediaUrl: "",
+                                    posterUrl: "",
                                   });
                                 }}
                               >
@@ -3844,6 +3868,7 @@ export default function FamilyHubPage() {
                                         mediaType:
                                           selectedNews.media?.type || "image",
                                         mediaUrl: selectedNews.media?.url || "",
+                                        posterUrl: selectedNews.media?.type === "video" ? (selectedNews.media as any)?.posterUrl || "" : "",
                                       });
                                     }}
                                   >
@@ -4159,7 +4184,7 @@ export default function FamilyHubPage() {
               {/* Premium Family Switcher */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between px-1">
-                  <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Select Family Hub</h3>
+                  <h3 className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-widest">Select Family Hub</h3>
                   {isAdmin && (
                     <Button
                       variant="ghost"
@@ -4233,7 +4258,7 @@ export default function FamilyHubPage() {
                         </div>
 
                         {isAdmin && (
-                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-100 transition-opacity">
                             <Button
                               variant="secondary"
                               size="icon"

@@ -1,8 +1,9 @@
 import * as React from "react";
 import { Camera, Clapperboard } from "lucide-react";
+import { generateVideoPoster } from "@/lib/video-utils";
 
 interface SafeFileUploadProps {
-  onFileSelect: (url: string, file?: File) => void;
+  onFileSelect: (url: string, file?: File, posterUrl?: string) => void;
   accept: string;
   mediaType: "image" | "video";
   className?: string;
@@ -17,27 +18,46 @@ export function SafeFileUpload({
   children
 }: SafeFileUploadProps) {
   const [blobUrl, setBlobUrl] = React.useState<string>("");
+  const [posterUrl, setPosterUrl] = React.useState<string>("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleFileChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
-    // Revoke previous blob URL to prevent memory leaks
+    // Revoke previous blob URLs to prevent memory leaks
     if (blobUrl) {
       URL.revokeObjectURL(blobUrl);
       setBlobUrl("");
+    }
+    if (posterUrl) {
+      URL.revokeObjectURL(posterUrl);
+      setPosterUrl("");
     }
 
     if (file && file.size > 0) {
       try {
         const newBlobUrl = URL.createObjectURL(file);
         setBlobUrl(newBlobUrl);
-        onFileSelect(newBlobUrl, file);
+
+        // Generate poster for videos
+        if (mediaType === "video") {
+          try {
+            const newPosterUrl = await generateVideoPoster(file);
+            setPosterUrl(newPosterUrl);
+            onFileSelect(newBlobUrl, file, newPosterUrl);
+          } catch (error) {
+            console.error("Failed to generate video poster:", error);
+            // Still call onFileSelect even if poster generation fails
+            onFileSelect(newBlobUrl, file);
+          }
+        } else {
+          onFileSelect(newBlobUrl, file);
+        }
       } catch (error) {
         console.error("Failed to create blob URL:", error);
       }
     }
-  }, [blobUrl, onFileSelect]);
+  }, [blobUrl, posterUrl, onFileSelect, mediaType]);
 
   // We rely on handleFileChange to revoke old URLs when a new one is picked. 
   // We avoid revoking on unmount because the parent state might still need 
@@ -78,10 +98,11 @@ interface SafeMediaPreviewProps {
   url: string;
   type: "image" | "video";
   alt?: string;
+  posterUrl?: string;
   className?: string;
 }
 
-export function SafeMediaPreview({ url, type, alt = "", className = "" }: SafeMediaPreviewProps) {
+export function SafeMediaPreview({ url, type, alt = "", posterUrl, className = "" }: SafeMediaPreviewProps) {
   const [isValid, setIsValid] = React.useState(false);
 
   React.useEffect(() => {
@@ -115,6 +136,7 @@ export function SafeMediaPreview({ url, type, alt = "", className = "" }: SafeMe
       <video
         className={`h-full w-full object-cover ${className}`}
         src={url}
+        poster={posterUrl}
         controls
         muted
         playsInline
